@@ -1,18 +1,18 @@
 import { Fragment, useState } from 'react'
 
-type ExportFormat = 'pdf' | 'csv'
+type ExportFormat = 'pdf' | 'csv' | 'xml'
 
-interface ExportButtonsProps {
-  onExport: (format: ExportFormat) => void | Promise<void>
-  formats?: ExportFormat[]
+interface ExportButtonsProps<F extends ExportFormat = ExportFormat> {
+  onExport: (format: F) => void | Promise<void>
+  formats?: F[]
   className?: string
 }
 
 /** Einheitlicher Export-Button (Pillenbutton), z. B. "📄 PDF | CSV". Issue #259. */
-export function ExportButtons({ onExport, formats = ['pdf', 'csv'], className }: ExportButtonsProps) {
+export function ExportButtons<F extends ExportFormat = ExportFormat>({ onExport, formats = ['pdf', 'csv'] as F[], className }: ExportButtonsProps<F>) {
   const [laedt, setLaedt] = useState(false)
 
-  async function handle(format: ExportFormat) {
+  async function handle(format: F) {
     setLaedt(true)
     try {
       await onExport(format)
@@ -33,7 +33,7 @@ export function ExportButtons({ onExport, formats = ['pdf', 'csv'], className }:
             title={`Als ${format.toUpperCase()} exportieren`}
             className="px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
           >
-            {format === 'pdf' ? `${laedt ? '⏳' : '📄'} PDF` : 'CSV'}
+            {format === 'pdf' ? `${laedt ? '⏳' : '📄'} PDF` : format.toUpperCase()}
           </button>
         </Fragment>
       ))}

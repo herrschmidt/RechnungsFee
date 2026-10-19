@@ -2020,6 +2020,21 @@ export const getUStVAPdfUrl = async (zeitraum: string): Promise<string> => {
   return `${base}/ustva/pdf?zeitraum=${encodeURIComponent(zeitraum)}`
 }
 
+/** UStVA als ELSTER-XML (Upload-Datei für Mein ELSTER) herunterladen. */
+export const downloadUstvaXml = async (zeitraum: string): Promise<string> => {
+  const base = await getBaseUrl()
+  const res = await fetch(`${base}/ustva/xml?zeitraum=${encodeURIComponent(zeitraum)}`)
+  if (!res.ok) {
+    const detail = await res.json().then(j => j.detail).catch(() => null)
+    throw new Error(detail ?? `XML-Export fehlgeschlagen (${res.status})`)
+  }
+  const blob = await res.blob()
+  const filename = res.headers.get('Content-Disposition')?.match(/filename="?([^"]+)"?/)?.[1]
+    ?? `UStVA_${zeitraum}_ELSTER.xml`
+  await _triggerBlobDownload(blob, filename)
+  return filename
+}
+
 export type UStVAPosten = {
   quelle: 'journal' | 'vorsteuer_anspruch'
   quelle_id: number
@@ -2094,6 +2109,21 @@ export const pruefZM = () =>
 
 export const berechneZM = (zeitraum: string) =>
   request<ZMErgebnis>(`/zm/berechnen?zeitraum=${encodeURIComponent(zeitraum)}`)
+
+/** ZM als CSV-Meldeliste (Import-Datei für Mein ELSTER) herunterladen. */
+export const downloadZmCsv = async (zeitraum: string): Promise<string> => {
+  const base = await getBaseUrl()
+  const res = await fetch(`${base}/zm/csv?zeitraum=${encodeURIComponent(zeitraum)}`)
+  if (!res.ok) {
+    const detail = await res.json().then(j => j.detail).catch(() => null)
+    throw new Error(detail ?? `CSV-Export fehlgeschlagen (${res.status})`)
+  }
+  const blob = await res.blob()
+  const filename = res.headers.get('Content-Disposition')?.match(/filename="?([^"]+)"?/)?.[1]
+    ?? `ZM_${zeitraum}_ELSTER.csv`
+  await _triggerBlobDownload(blob, filename)
+  return filename
+}
 
 // --- EÜR ---
 

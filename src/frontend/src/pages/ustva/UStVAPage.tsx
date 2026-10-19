@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   berechneUStVA, speichereUStVA, getUStVAHistorie, getUStVAPdfUrl, getUStVAPosten,
-  getUnternehmen, openUrl,
+  getUnternehmen, openUrl, downloadUstvaXml,
   type UStVAErgebnis,
 } from '../../api/client'
 import { useMxAuto } from '../../hooks/useAnsicht'
@@ -202,13 +202,17 @@ export function UStVAPage() {
     },
   })
 
-  async function handlePdf() {
+  async function handleExport(format: 'pdf' | 'csv' | 'xml') {
     setPdfFehler(null); setPdfExportiert(false)
     try {
-      await openUrl(await getUStVAPdfUrl(zeitraum))
+      if (format === 'xml') {
+        await downloadUstvaXml(zeitraum)
+      } else {
+        await openUrl(await getUStVAPdfUrl(zeitraum))
+      }
       setPdfExportiert(true)
-    } catch (e: any) {
-      setPdfFehler(e?.message ?? 'PDF-Export fehlgeschlagen')
+    } catch (e) {
+      setPdfFehler(e instanceof Error ? e.message : 'Export fehlgeschlagen')
     }
   }
 
@@ -320,7 +324,7 @@ export function UStVAPage() {
           )}
           {ergebnis && (
             <div className="flex items-center gap-2 ml-auto">
-              <ExportButtons formats={['pdf']} onExport={handlePdf} />
+              <ExportButtons formats={['pdf', 'xml']} onExport={handleExport} />
               {pdfExportiert && <span className="text-xs text-emerald-600 dark:text-emerald-400">✓ geöffnet</span>}
               {pdfFehler && <span className="text-xs text-red-600 dark:text-red-400">{pdfFehler}</span>}
               <button type="button" onClick={() => speichernMut.mutate(alleKZ() as any)}
