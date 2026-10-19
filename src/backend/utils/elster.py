@@ -7,12 +7,13 @@ Enthält:
 
 Quellen: ELSTER-Hilfe themaGlobal=ustva_upload / zmdo_import_eop,
 Bundesland-Umrechnungstabelle de.wikipedia.org/wiki/Steuernummer,
-ERiC-Schemata (geierlein: usta_201301.xsd), digitalservicebund/erica.
+Jahresdokumentation UStVA 2026 (ERiC 43.4, Feldliste + Plausi-Regeln),
+XSD 2013 (stesie/geierlein).
 """
 
 import re
 from datetime import date
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from xml.sax.saxutils import escape
 
 # BUFA-Präfix je Bundesland (erste 4 Stellen = Landespräfix + Finanzamtsnummer).
@@ -111,19 +112,9 @@ def steuernummer_elster13(steuernummer: str | None, bundesland: str | None) -> s
 # UStVA-XML (Nutzdaten für den Upload in Mein ELSTER)
 # ---------------------------------------------------------------------------
 
-# Datentypen der Kennziffern gemäß ELSTER-XSD (usta_*.xsd, Schema-Konventionen):
-# - Ganzzahl-Typ  usta_DefaultKZSType:         -?\d{1,13}
-# - Cent-Typ      usta_DefaultKZSTypewithCent: -?\d{1,11}\.\d{2} (Punkt!)
-_KZ_GANZZAHL = {
-    "21", "35", "41", "42", "43", "44", "45", "46", "48", "49", "52", "60",
-    "68", "73", "76", "77", "78", "81", "84", "86", "87", "89", "90", "91",
-    "93", "94", "95",
-}
-_KZ_CENT = {
-    "36", "47", "53", "59", "61", "62", "63", "64", "65", "66", "67", "69",
-    "74", "79", "80", "83", "85", "96", "98",
-}
-_KZ_FLAGS = {"10", "22", "26", "29"}  # Ja/Nein-Merker, Schema-Enumeration "1"
+# ELSTER-Typ GeldBetragOhneCent (Bemessungsgrundlagen, volle Euro nach §123 AO);
+# alle übrigen Kennzahlen sind GeldBetragMitCent.
+KZ_BEMESSUNGSGRUNDLAGE = frozenset({"21", "41", "45", "46", "81", "84", "86", "87", "89", "90", "93", "95"})
 
 # Kz09 ist laut XSD Pflicht, wird beim Mein-ELSTER-Upload aber ausdrücklich
 # ignoriert (offizielle Hilfe, Ausschlussliste). RechnungsFee hat keine
@@ -134,18 +125,14 @@ _USTVA_NS = "http://finkonsens.de/elster/elsteranmeldung/ustva/v{jahr}"
 
 
 def _e(text: object | None, max_len: int) -> str:
-    """XML-escapen und auf XSD-maxLength kürzen."""
-    return escape(str(text or "").strip())[:max_len]
+    """Auf XSD-maxLength kürzen und XML-escapen (Kürzen vor Escapen!)."""
+    return escape(str(text or "").strip()[:max_len])
 
 
 def _format_kz(nr: str, wert: Decimal) -> str:
-    if nr in _KZ_FLAGS:
-        return "1"
-    if nr in _KZ_GANZZAHL:
-        return str(int(wert))
-    if nr in _KZ_CENT:
-        return f"{wert:.2f}"
-    raise ElsterExportFehler(f"Unbekannte ELSTER-Kennziffer: Kz{nr}")
+    # "+ 0" normalisiert -0 – das ELSTER-Muster verbietet ein Minus ohne Ziffer ≠ 0
+    stellen = Decimal("1") if nr in KZ_BEMESSUNGSGRUNDLAGE else Decimal("0.01")
+    return str(wert.quantize(stellen, ROUND_HALF_UP) + 0)
 
 
 def build_ustva_xml(
@@ -158,8 +145,9 @@ def build_ustva_xml(
     """Baut die UStVA-Nutzdaten-XML für den Upload in Mein ELSTER (kein ERiC).
 
     zeitraum: "YYYY-MM" (Monat) oder "YYYY-QN" (Quartal).
-    kz_werte: ELSTER-Kennziffer → Betrag. Bemessungsgrundlagen bereits
-        gerundet (volle Euro) übergeben, Steuerbeträge centgenau.
+    kz_werte: ELSTER-Kennziffer → Betrag; die Rundung nach ELSTER-Typ
+        (Bemessungsgrundlagen volle Euro, Steuerbeträge centgenau) übernimmt
+        der Builder – ungerundete Werte dürfen übergeben werden.
         Kz83 (verbleibende Steuer) ist Pflicht und wird ggf. mit 0.00 gesetzt.
     """
     if not _STNR_13.fullmatch(steuernummer13 or ""):
@@ -175,14 +163,27 @@ def build_ustva_xml(
         zr = f"{int(monat):02d}"
     jahr = int(jahr_s)
 
-    name = getattr(unternehmen, "firmenname", "") or " ".join(
-        p for p in (getattr(unternehmen, "vorname", None),
-                    getattr(unternehmen, "nachname", None)) if p
+    name = unternehmen.firmenname or " ".join(
+        p for p in (unternehmen.vorname, unternehmen.nachname) if p
     )
     strasse_komplett = " ".join(
-        p for p in (getattr(unternehmen, "strasse", ""),
-                    getattr(unternehmen, "hausnummer", "")) if p
+        p for p in (unternehmen.strasse, unternehmen.hausnummer) if p
     ).strip()
+
+    # DatenLieferant Name/Strasse/PLZ/Ort sind Pflichtfelder (XSD minLength=1)
+    fehlend = [
+        bezeichnung
+        for bezeichnung, wert in (
+            ("Name", name), ("Straße", unternehmen.strasse),
+            ("PLZ", unternehmen.plz), ("Ort", unternehmen.ort),
+        )
+        if not (wert or "").strip()
+    ]
+    if fehlend:
+        raise ElsterExportFehler(
+            "Für den ELSTER-Export fehlen Angaben in den Stammdaten: "
+            + ", ".join(fehlend) + " – bitte ergänzen."
+        )
 
     kz_werte = dict(kz_werte)
     kz_werte.setdefault("83", Decimal("0.00"))
@@ -200,36 +201,16 @@ def build_ustva_xml(
         "  <DatenLieferant>",
         f"    <Name>{_e(name, 45)}</Name>",
         f"    <Strasse>{_e(strasse_komplett, 30)}</Strasse>",
-        f"    <PLZ>{_e(getattr(unternehmen, 'plz', ''), 12)}</PLZ>",
-        f"    <Ort>{_e(getattr(unternehmen, 'ort', ''), 30)}</Ort>",
+        f"    <PLZ>{_e(unternehmen.plz, 12)}</PLZ>",
+        f"    <Ort>{_e(unternehmen.ort, 30)}</Ort>",
     ]
-    if getattr(unternehmen, "telefon", None):
-        zeilen.append(f"    <Telefon>{_e(unternehmen.telefon, 35)}</Telefon>")
-    if getattr(unternehmen, "email", None):
-        zeilen.append(f"    <Email>{_e(unternehmen.email, 100)}</Email>")
+    if unternehmen.telefon:
+        zeilen.append(f"    <Telefon>{_e(unternehmen.telefon, 20)}</Telefon>")
+    if unternehmen.email:
+        zeilen.append(f"    <Email>{_e(unternehmen.email, 70)}</Email>")
     zeilen += [
         "  </DatenLieferant>",
         "  <Steuerfall>",
-        "    <Unternehmer>",
-        f"      <Bezeichnung>{_e(name, 45)}</Bezeichnung>",
-    ]
-    # Optionale Personenfelder nur emittieren wenn belegt (XSD minLength=1)
-    for tag, feld in (("Name", "nachname"), ("Vorname", "vorname")):
-        wert = getattr(unternehmen, feld, None)
-        if wert:
-            zeilen.append(f"      <{tag}>{_e(wert, 45)}</{tag}>")
-    zeilen += [
-        f"      <Str>{_e(getattr(unternehmen, 'strasse', ''), 30)}</Str>",
-        f"      <Hausnummer>{_e(getattr(unternehmen, 'hausnummer', ''), 12)}</Hausnummer>",
-        f"      <Ort>{_e(getattr(unternehmen, 'ort', ''), 30)}</Ort>",
-        f"      <PLZ>{_e(getattr(unternehmen, 'plz', ''), 12)}</PLZ>",
-    ]
-    if getattr(unternehmen, "telefon", None):
-        zeilen.append(f"      <Telefon>{_e(unternehmen.telefon, 35)}</Telefon>")
-    if getattr(unternehmen, "email", None):
-        zeilen.append(f"      <Email>{_e(unternehmen.email, 100)}</Email>")
-    zeilen += [
-        "    </Unternehmer>",
         "    <Umsatzsteuervoranmeldung>",
         f"      <Jahr>{jahr}</Jahr>",
         f"      <Zeitraum>{zr}</Zeitraum>",
@@ -252,7 +233,7 @@ def build_ustva_xml(
 # Excel-Version 3.2.1, UTF-8, Komma-getrennt, Summe als ganze Euro-Zahl.
 # RechnungsFee-Kennzeichen → ELSTER-Code: intern "D" (§13b-Dienstleistung)
 # ist bei ELSTER "S" (sonstige Leistung); "D" ist dort das Dreiecksgeschäft.
-_ZM_KENNZEICHEN = {"L": "L", "D": "S", "S": "S"}
+_ZM_KENNZEICHEN = {"L": "L", "D": "S"}
 _UST_IDNR_RE = re.compile(r"^[A-Z]{2}[0-9A-Z+*]{5,12}$")
 
 
@@ -261,7 +242,7 @@ def build_zm_csv(positionen) -> bytes:
 
     positionen: Objekte mit .ust_idnr (inkl. Länderkennzeichen), .betrag
     (Decimal) und .kennzeichen ("L" ig. Lieferung / "D" ig. Dienstleistung
-    §13b / "S" sonstige Leistung).
+    §13b – wird zu ELSTER-"S" gemappt).
     """
     zeilen = [
         "#v3.0",

@@ -3,24 +3,26 @@ r"""Tests für den ELSTER-UStVA-XML-Export (Mein-ELSTER-Upload, Issue #360).
 Format-Vertrag verifiziert gegen:
 - offizielle ELSTER-Hilfe (themaGlobal=ustva_upload): Nutzdaten-only,
   Root <Anmeldungssteuern>, ISO-8859-15, version-Attribut = Jahresversion
-- ELSTER-XSD (geierlein-Mirror usta_201301.xsd): Pflichtfelder Jahr, Zeitraum,
-  Steuernummer, Kz09, Kz83; Typen \d{4}0\d{8} / Ganzzahl / ".dd"; Zeitraum
-  01-12 bzw. 41-44
+- Jahresdokumentation UStVA 2026 (ERiC 43.4): Pflichtfelder Jahr, Zeitraum,
+  Steuernummer, Kz09, Kz83; DatenLieferant Name/Strasse/PLZ/Ort pflicht;
+  Typen \d{4}0\d{8} / Ganzzahl / ".dd"; Zeitraum 01-12 bzw. 41-44
 - Forum-Praxisbeispiel (thread 425731): funktionierender Upload-Aufbau
 """
 import asyncio
 import re
 
+from datetime import date
 from decimal import Decimal
 from xml.etree import ElementTree as ET
 
 import pytest
+from fastapi import HTTPException
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from api.ustva import ustva_xml
 from database.connection import Base
-from database.models import Unternehmen
+from database.models import Journaleintrag, Kategorie, Unternehmen
 from utils.elster import ElsterExportFehler, build_ustva_xml
 
 NS = "http://finkonsens.de/elster/elsteranmeldung/ustva/v2026"
@@ -138,7 +140,7 @@ def test_kz09_als_schema_pflichtfeld_vorhanden():
         zeitraum="2026-03", steuernummer13="9151081508154",
         unternehmen=_unternehmen(), kz_werte={},
     )).find("{*}Steuerfall/{*}Umsatzsteuervoranmeldung")
-    assert re.fullmatch(r"\d{5}", ustva.findtext("{*}Kz09"))
+    assert ustva.findtext("{*}Kz09") == "00000"
 
 
 def test_umlaute_und_escapes_in_iso_8859_15():
@@ -153,17 +155,76 @@ def test_umlaute_und_escapes_in_iso_8859_15():
     _parse(xml)
 
 
-def test_unternehmer_block_im_steuerfall():
+def test_kein_unternehmer_block_im_steuerfall():
+    """Der optionale <Unternehmer>-Block wird nicht emittiert (Jahresdoku erlaubt
+    dort als Hausnummer nur Ziffern) - Anschrift steht im Pflichtblock
+    <DatenLieferant>."""
     root = _parse(build_ustva_xml(
         zeitraum="2026-03", steuernummer13="9151081508154",
         unternehmen=_unternehmen(), kz_werte={},
     ))
-    unt = root.find("{*}Steuerfall/{*}Unternehmer")
-    assert unt is not None
-    assert unt.findtext("{*}Bezeichnung") == "Muster GmbH"
-    assert unt.findtext("{*}Name") == "Mustermann"
-    assert unt.findtext("{*}Str") == "Musterweg"
-    assert unt.findtext("{*}Hausnummer") == "12"
+    assert root.find("{*}Steuerfall/{*}Unternehmer") is None
+    lieferant = root.find("{*}DatenLieferant")
+    assert lieferant.findtext("{*}Name") == "Muster GmbH"
+    assert lieferant.findtext("{*}Strasse") == "Musterweg 12"
+    assert lieferant.findtext("{*}PLZ") == "12345"
+    assert lieferant.findtext("{*}Ort") == "Musterstadt"
+
+
+def test_name_genau_45_zeichen_mit_ampersand():
+    name45 = "Müller & Söhne GmbH & Co. KG Garten- und Land"
+    assert len(name45) == 45
+    lieferant = _parse(build_ustva_xml(
+        zeitraum="2026-03", steuernummer13="9151081508154",
+        unternehmen=_unternehmen(firmenname=name45), kz_werte={},
+    )).find("{*}DatenLieferant")
+    assert lieferant.findtext("{*}Name") == name45
+
+
+def test_name_laenger_45_wird_vor_dem_escapen_gekuerzt():
+    # "&" an Position 44: Escape nach dem Kürzen, sonst würde "&amp;" halbiert
+    lieferant = _parse(build_ustva_xml(
+        zeitraum="2026-03", steuernummer13="9151081508154",
+        unternehmen=_unternehmen(firmenname="A" * 41 + " & Co"), kz_werte={},
+    )).find("{*}DatenLieferant")
+    assert len(lieferant.findtext("{*}Name")) == 45
+
+
+def test_telefon_max_20_zeichen():
+    lieferant = _parse(build_ustva_xml(
+        zeitraum="2026-03", steuernummer13="9151081508154",
+        unternehmen=_unternehmen(telefon="+49 (0) 1234 / 567 890 12"), kz_werte={},
+    )).find("{*}DatenLieferant")
+    assert len(lieferant.findtext("{*}Telefon")) == 20
+
+
+def test_datenlieferant_pflichtfelder_fehlen_fehler():
+    with pytest.raises(ElsterExportFehler, match="Straße"):
+        build_ustva_xml(
+            zeitraum="2026-03", steuernummer13="9151081508154",
+            unternehmen=_unternehmen(strasse=""), kz_werte={},
+        )
+
+
+def test_format_kz_rundung_und_minus_null():
+    ustva = _parse(build_ustva_xml(
+        zeitraum="2026-03", steuernummer13="9151081508154",
+        unternehmen=_unternehmen(),
+        kz_werte={"81": Decimal("1234.50"), "83": Decimal("-0.00")},
+    )).find("{*}Steuerfall/{*}Umsatzsteuervoranmeldung")
+    assert ustva.findtext("{*}Kz81") == "1235"
+    # ELSTER-Muster verbietet "-0"/"-0.00" – negative Null wird zu "0"/"0.00"
+    assert ustva.findtext("{*}Kz83") == "0.00"
+
+
+def test_format_kz_negativer_rundungsrest_wird_null():
+    ustva = _parse(build_ustva_xml(
+        zeitraum="2026-03", steuernummer13="9151081508154",
+        unternehmen=_unternehmen(),
+        kz_werte={"81": Decimal("-0.4"), "83": Decimal("0.00")},
+    )).find("{*}Steuerfall/{*}Umsatzsteuervoranmeldung")
+    # -0.4 ist ungleich 0, wird also emittiert – rundet aber zu -0 → "0"
+    assert ustva.findtext("{*}Kz81") == "0"
 
 
 def test_steuerummer_validierung_am_eingang():
@@ -204,36 +265,100 @@ def test_endpoint_liefert_xml_mit_attachment_header(db):
 def test_endpoint_422_ohne_steuernummer(db):
     db.query(Unternehmen).first().steuernummer = None
     db.commit()
-    with pytest.raises(Exception) as exc:
+    with pytest.raises(HTTPException) as exc:
         ustva_xml(zeitraum="2026-Q1", db=db)
-    assert "422" in str(exc.value)
+    assert exc.value.status_code == 422
 
 
 def test_endpoint_422_ohne_bundesland(db):
     db.query(Unternehmen).first().bundesland = None
     db.commit()
-    with pytest.raises(Exception) as exc:
+    with pytest.raises(HTTPException) as exc:
         ustva_xml(zeitraum="2026-Q1", db=db)
-    assert "422" in str(exc.value)
+    assert exc.value.status_code == 422
 
 
 def test_endpoint_422_kleinunternehmer(db):
     db.query(Unternehmen).first().ist_kleinunternehmer = True
     db.commit()
-    with pytest.raises(Exception) as exc:
+    with pytest.raises(HTTPException) as exc:
         ustva_xml(zeitraum="2026-Q1", db=db)
-    assert "422" in str(exc.value)
+    assert exc.value.status_code == 422
 
 
 def test_endpoint_422_ungueltiger_zeitraum(db):
-    with pytest.raises(Exception) as exc:
+    with pytest.raises(HTTPException) as exc:
         ustva_xml(zeitraum="kein-zeitraum", db=db)
-    assert "422" in str(exc.value)
+    assert exc.value.status_code == 422
+
+
+def test_endpoint_422_ohne_strasse(db):
+    unt = db.query(Unternehmen).first()
+    unt.strasse = ""
+    db.commit()
+    with pytest.raises(HTTPException) as exc:
+        ustva_xml(zeitraum="2026-Q1", db=db)
+    assert exc.value.status_code == 422
 
 
 def test_endpoint_404_ohne_unternehmen(db):
     db.query(Unternehmen).delete()
     db.commit()
-    with pytest.raises(Exception) as exc:
+    with pytest.raises(HTTPException) as exc:
         ustva_xml(zeitraum="2026-Q1", db=db)
-    assert "404" in str(exc.value)
+    assert exc.value.status_code == 404
+
+
+def test_endpoint_mit_journaldaten_elster_rundung(db):
+    """Reale Buchungen: Bemessungsgrundlagen gerundet (§123 AO), Steuer- und
+    Vorsteuerbeträge centgenau; Kz83 = voraussichtliche ELSTER-Zahllast
+    (aus gerundeten Grundlagen), NICHT die gebuchte 19%-Steuer kz_83."""
+    kat_erloes = Kategorie(name="Betriebseinnahmen", kontenart="Erlös",
+                           euer_zeile=17, konto_skr03="8400")
+    kat_aufwand = Kategorie(name="Bürobedarf", kontenart="Aufwand",
+                            konto_skr03="4930", vorsteuer_prozent=100,
+                            ust_satz_standard=19)
+    kat_bau = Kategorie(name="Bauleistungen §13b", kontenart="Aufwand",
+                        konto_skr03="5920", vorsteuer_prozent=100,
+                        ust_satz_standard=19)
+    db.add_all([kat_erloes, kat_aufwand, kat_bau])
+    db.commit()
+    db.add_all([
+        # a) regulärer 19%-Umsatz
+        Journaleintrag(
+            datum=date(2026, 2, 10), belegnr="B1", beschreibung="Umsatz 19%",
+            kategorie_id=kat_erloes.id, zahlungsart="Bank", art="Einnahme",
+            netto_betrag=Decimal("1000.40"), ust_satz=Decimal("19"),
+            ust_betrag=Decimal("190.08"), brutto_betrag=Decimal("1190.48"),
+            konto_ust_skr03="1776",
+        ),
+        # b) reguläre Vorsteuer
+        Journaleintrag(
+            datum=date(2026, 2, 12), belegnr="B2", beschreibung="Büromaterial",
+            kategorie_id=kat_aufwand.id, zahlungsart="Bank", art="Ausgabe",
+            netto_betrag=Decimal("266.05"), ust_satz=Decimal("19"),
+            ust_betrag=Decimal("50.55"), brutto_betrag=Decimal("316.60"),
+            vorsteuer_betrag=Decimal("50.55"), vorsteuerabzug=True,
+        ),
+        # c) §13b Abs. 2: Bemessungsgrundlage + Steuer + abziehbare Vorsteuer
+        Journaleintrag(
+            datum=date(2026, 2, 20), belegnr="B3", beschreibung="Bauleistung",
+            kategorie_id=kat_bau.id, zahlungsart="Bank", art="Ausgabe",
+            netto_betrag=Decimal("500.00"), ust_satz=Decimal("19"),
+            ust_betrag=Decimal("95.00"), brutto_betrag=Decimal("595.00"),
+            vorsteuer_betrag=Decimal("95.00"), vorsteuerabzug=True,
+            ust_sonderfall="13b_abs2",
+        ),
+    ])
+    db.commit()
+
+    resp = ustva_xml(zeitraum="2026-Q1", db=db)
+    body = asyncio.run(_lese_body(resp))
+    ustva = _parse(body).find("{*}Steuerfall/{*}Umsatzsteuervoranmeldung")
+    assert ustva.findtext("{*}Kz81") == "1000"      # gerundet aus 1000.40
+    assert ustva.findtext("{*}Kz66") == "50.55"     # Vorsteuer centgenau
+    assert ustva.findtext("{*}Kz84") == "500"       # §13b-Bemessungsgrundlage
+    assert ustva.findtext("{*}Kz85") == "95.00"     # §13b-Steuer centgenau
+    assert ustva.findtext("{*}Kz67") == "95.00"     # Vorsteuer aus §13b
+    # 1000 × 19% − 50.55 = 139.45 (≠ gebuchte Steuer 190.08, ≠ 139.53 centgenau)
+    assert ustva.findtext("{*}Kz83") == "139.45"

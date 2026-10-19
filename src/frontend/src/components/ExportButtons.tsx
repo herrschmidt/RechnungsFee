@@ -2,6 +2,8 @@ import { Fragment, useState } from 'react'
 
 type ExportFormat = 'pdf' | 'csv' | 'xml'
 
+const LABEL: Record<ExportFormat, string> = { pdf: 'PDF', csv: 'CSV', xml: 'ELSTER-XML' }
+
 interface ExportButtonsProps<F extends ExportFormat = ExportFormat> {
   onExport: (format: F) => void | Promise<void>
   formats?: F[]
@@ -30,10 +32,10 @@ export function ExportButtons<F extends ExportFormat = ExportFormat>({ onExport,
             type="button"
             onClick={() => handle(format)}
             disabled={laedt}
-            title={`Als ${format.toUpperCase()} exportieren`}
+            title={`Als ${LABEL[format]} exportieren`}
             className="px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
           >
-            {format === 'pdf' ? `${laedt ? '⏳' : '📄'} PDF` : format.toUpperCase()}
+            {format === 'pdf' ? `${laedt ? '⏳' : '📄'} ` : ''}{LABEL[format]}
           </button>
         </Fragment>
       ))}

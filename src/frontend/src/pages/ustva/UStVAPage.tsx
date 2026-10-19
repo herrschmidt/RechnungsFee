@@ -165,8 +165,8 @@ export function UStVAPage() {
   const [monat, setMonat] = useState(now.getMonth() + 1)
   const [quartal, setQuartal] = useState(Math.ceil((now.getMonth() + 1) / 3))
   const [gespeichertMeldung, setGespeichertMeldung] = useState(false)
-  const [pdfFehler, setPdfFehler] = useState<string | null>(null)
-  const [pdfExportiert, setPdfExportiert] = useState(false)
+  const [exportFehler, setExportFehler] = useState<string | null>(null)
+  const [pdfGeoeffnet, setPdfGeoeffnet] = useState(false)
   // Manuelle Korrekturen für nicht-auto-berechnete KZs
   const [manuell, setManuell] = useState<Partial<Record<string, string>>>({})
 
@@ -202,17 +202,17 @@ export function UStVAPage() {
     },
   })
 
-  async function handleExport(format: 'pdf' | 'csv' | 'xml') {
-    setPdfFehler(null); setPdfExportiert(false)
+  async function handleExport(format: 'pdf' | 'xml') {
+    setExportFehler(null); setPdfGeoeffnet(false)
     try {
       if (format === 'xml') {
         await downloadUstvaXml(zeitraum)
       } else {
         await openUrl(await getUStVAPdfUrl(zeitraum))
+        setPdfGeoeffnet(true)
       }
-      setPdfExportiert(true)
     } catch (e) {
-      setPdfFehler(e instanceof Error ? e.message : 'Export fehlgeschlagen')
+      setExportFehler(e instanceof Error ? e.message : 'Export fehlgeschlagen')
     }
   }
 
@@ -324,9 +324,10 @@ export function UStVAPage() {
           )}
           {ergebnis && (
             <div className="flex items-center gap-2 ml-auto">
-              <ExportButtons formats={['pdf', 'xml']} onExport={handleExport} />
-              {pdfExportiert && <span className="text-xs text-emerald-600 dark:text-emerald-400">✓ geöffnet</span>}
-              {pdfFehler && <span className="text-xs text-red-600 dark:text-red-400">{pdfFehler}</span>}
+              <ExportButtons formats={hatManuelleUeberschreibung ? ['pdf'] : ['pdf', 'xml']} onExport={handleExport} />
+              {hatManuelleUeberschreibung && <span className="text-xs text-amber-600 dark:text-amber-400">ELSTER-XML nur ohne manuelle Felder – trag sie direkt in Mein ELSTER ein.</span>}
+              {pdfGeoeffnet && <span className="text-xs text-emerald-600 dark:text-emerald-400">✓ geöffnet</span>}
+              {exportFehler && <span className="text-xs text-red-600 dark:text-red-400">{exportFehler}</span>}
               <button type="button" onClick={() => speichernMut.mutate(alleKZ() as any)}
                 disabled={speichernMut.isPending || ergebnis.befreit}
                 className="px-3 py-1.5 text-xs font-medium bg-slate-800 dark:bg-slate-600 text-white rounded-lg hover:bg-slate-700 disabled:opacity-40 transition-colors">

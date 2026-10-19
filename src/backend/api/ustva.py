@@ -45,7 +45,7 @@ from sqlalchemy.orm import Session
 
 from database.connection import get_db
 from database.models import Journaleintrag, Kategorie, Unternehmen, UstvaExport, Rechnung, VorsteuerAnspruch
-from utils.elster import ElsterExportFehler, build_ustva_xml, steuernummer_elster13
+from utils.elster import ElsterExportFehler, KZ_BEMESSUNGSGRUNDLAGE, build_ustva_xml, steuernummer_elster13
 from utils.vorsteuer_soll import CUTOVER_DATUM as CUTOVER_DATUM_VORSTEUER
 
 router = APIRouter(prefix="/api/ustva", tags=["UStVA"])
@@ -443,7 +443,7 @@ def _berechne_kz(von: date, bis: date, db: Session) -> tuple[dict[str, Decimal],
 # werden für die "ELSTER-Eingabewert"-Spalte auf volle Euro gerundet; die direkt gemeldeten
 # Steuerbeträge (83/88/98/47/85) und Vorsteuerbeträge (66/61/62/67) bleiben centgenau, da sie
 # in ELSTER selbst centgenau eingetragen werden (keine eigene Bemessungsgrundlage-Rundung).
-_BEMESSUNGSGRUNDLAGE_KZS = {"81", "86", "41", "87", "21", "45", "89", "93", "90", "95", "46", "84"}
+_BEMESSUNGSGRUNDLAGE_KZS = KZ_BEMESSUNGSGRUNDLAGE
 
 
 def _voller_euro(betrag: Decimal) -> Decimal:
@@ -870,12 +870,6 @@ def ustva_pdf(
     )
 
 
-# Kennziffern, die im ELSTER-XML als Steuerbetrag (2 Dezimalen) statt als
-# Bemessungsgrundlage (volle Euro) übertragen werden: eigene Steuerzeilen
-# (98/47/85) plus alle Vorsteuer-Kennzahlen (centgenau, §123 AO greift nicht).
-_STEUER_CENT_KZS = {"98", "47", "85", "66", "61", "62", "67"}
-
-
 @router.get("/xml")
 def ustva_xml(
     zeitraum: str = Query(...),
@@ -891,21 +885,12 @@ def ustva_xml(
         stnr13 = steuernummer_elster13(unt.steuernummer, unt.bundesland)
     except ElsterExportFehler as exc:
         raise HTTPException(422, str(exc))
-    try:
-        von, bis, _ = _zeitraum_grenzen(zeitraum)
-    except Exception:
-        raise HTTPException(422, f"Ungültiges Zeitraum-Format: {zeitraum!r}")
+    von, bis, _ = _zeitraum_grenzen(zeitraum)
 
     kz, _ = _berechne_kz(von, bis, db)
     gerundet, zahllast_elster, _ = _elster_rundung(kz)
 
-    kz_werte: dict[str, Decimal] = {}
-    for nr, wert in gerundet.items():
-        if wert:
-            kz_werte[nr] = wert
-    for nr in _STEUER_CENT_KZS:
-        if kz[f"kz_{nr}"]:
-            kz_werte[nr] = kz[f"kz_{nr}"]
+    kz_werte = {nr: gerundet.get(nr, kz[f"kz_{nr}"]) for _, nr, *_ in KZ_META}
     kz_werte["83"] = zahllast_elster  # Pflichtfeld: verbleibende Steuer
 
     try:

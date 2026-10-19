@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { berechneZM, downloadZmCsv, getUnternehmen, type ZMErgebnis } from '../../api/client'
+import { ExportButtons } from '../../components/ExportButtons'
 import { useMxAuto } from '../../hooks/useAnsicht'
 
 const MONATE = ['', 'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
@@ -36,18 +37,14 @@ export function ZMPage() {
     enabled: false,
   })
 
-  const [csvLaedt, setCsvLaedt] = useState(false)
   const [csvFehler, setCsvFehler] = useState<string | null>(null)
 
   async function handleCsv() {
     setCsvFehler(null)
-    setCsvLaedt(true)
     try {
       await downloadZmCsv(zeitraum)
     } catch (e) {
       setCsvFehler(e instanceof Error ? e.message : 'CSV-Export fehlgeschlagen')
-    } finally {
-      setCsvLaedt(false)
     }
   }
 
@@ -139,11 +136,7 @@ export function ZMPage() {
             </div>
             {ergebnis.positionen.length > 0 && (
               <div className="flex items-center gap-2">
-                <button type="button" onClick={handleCsv} disabled={csvLaedt}
-                  title="Meldeliste als CSV für den Import in Mein ELSTER herunterladen"
-                  className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                  {csvLaedt ? '⏳ Erstelle…' : '📋 ELSTER-CSV'}
-                </button>
+                <ExportButtons formats={['csv']} onExport={handleCsv} />
                 {csvFehler && <span className="text-xs text-red-600 dark:text-red-400">{csvFehler}</span>}
               </div>
             )}
