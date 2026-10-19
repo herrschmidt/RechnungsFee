@@ -241,3 +241,54 @@ def build_ustva_xml(
     # ISO-8859-15-nicht darstellbare Zeichen (z. B. „—“, Emoji) als numerische
     # XML-Entitäten (&#NNN;) schreiben – valide XML, ELSTER dekodiert korrekt.
     return "\n".join(zeilen).encode("iso-8859-15", errors="xmlcharrefreplace")
+
+
+# ---------------------------------------------------------------------------
+# ZM-CSV (Meldelisten-Import in Mein ELSTER)
+# ---------------------------------------------------------------------------
+
+# Offizielle Schnittstelle (themaGlobal=zmdo_import_eop): CSV-Version 3.0,
+# Excel-Version 3.2.1, UTF-8, Komma-getrennt, Summe als ganze Euro-Zahl.
+# RechnungsFee-Kennzeichen → ELSTER-Code: intern "D" (§13b-Dienstleistung)
+# ist bei ELSTER "S" (sonstige Leistung); "D" ist dort das Dreiecksgeschäft.
+_ZM_KENNZEICHEN = {"L": "L", "D": "S", "S": "S"}
+_UST_IDNR_RE = re.compile(r"^[A-Z]{2}[0-9A-Z+*]{5,12}$")
+
+
+def build_zm_csv(positionen) -> bytes:
+    """Baut die ZM-Meldeliste als CSV für den Import in Mein ELSTER.
+
+    positionen: Objekte mit .ust_idnr (inkl. Länderkennzeichen), .betrag
+    (Decimal) und .kennzeichen ("L" ig. Lieferung / "D" ig. Dienstleistung
+    §13b / "S" sonstige Leistung).
+    """
+    zeilen = [
+        "#v3.0",
+        "#ve3.2.1",
+        "Umsatzsteuer-Identifikationsnummer (USt-IdNr.),Summe (Euro),Art der Leistung",
+    ]
+    fehler: list[str] = []
+    for pos in positionen:
+        ust_idnr = (pos.ust_idnr or "").strip().upper()
+        if not _UST_IDNR_RE.fullmatch(ust_idnr):
+            fehler.append(pos.ust_idnr or "<leer>")
+            continue
+        code = _ZM_KENNZEICHEN.get(pos.kennzeichen)
+        if code is None:
+            raise ElsterExportFehler(
+                f"Unbekanntes ZM-Kennzeichen: {pos.kennzeichen!r}"
+            )
+        summe = pos.betrag.quantize(Decimal("1"), rounding="ROUND_HALF_UP")
+        zeilen.append(f"{ust_idnr},{int(summe)},{code}")
+
+    if fehler:
+        raise ElsterExportFehler(
+            "Fehlende oder ungültige USt-IdNr. bei: "
+            + ", ".join(fehler)
+            + " – bitte beim Kunden in den Stammdaten hinterlegen."
+        )
+    if len(zeilen) == 3:
+        raise ElsterExportFehler(
+            "Keine meldepflichtigen Positionen im Zeitraum – die ZM entfällt."
+        )
+    return ("\n".join(zeilen) + "\n").encode("utf-8")
