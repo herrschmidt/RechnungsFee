@@ -23,6 +23,13 @@ export type ChangelogVersion = {
 
 export const CHANGELOG: ChangelogVersion[] = [
   {
+    version: 'v0.8.0',
+    datum: 'in Arbeit',
+    eintraege: [
+      { typ: 'verbesserung', text: 'Barrierefreiheit: Die Dialoge „Kunde anlegen“, „Lieferant anlegen“, „Kategorie anlegen“, Import, E-Mail und Mahnung-Mail sind jetzt für Screenreader und Tastatur erschlossen – der Fokus springt beim Öffnen in den Dialog und bleibt dort, Escape schließt ihn (bzw. zuerst eine geöffnete Auswahlliste), danach kehrt der Fokus zum Auslöser zurück. Formularfelder sind mit ihren Beschriftungen verknüpft, Pflichtfelder und Fehlermeldungen werden vorgelesen; die Länderauswahl ist eine vollwertige, per Tastatur bedienbare Auswahlliste. Danke an Simperdy für die Umsetzung (PR #452, Sammel-Issue #455).' },
+    ],
+  },
+  {
     version: 'v0.7.3',
     datum: 'Oktober 2026',
     eintraege: [
