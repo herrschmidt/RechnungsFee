@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { createKunde, type Kunde } from '../api/client'
 import { istEuLand } from '../utils/laender'
 import { LandCombobox } from './LandCombobox'
+import { Modal } from './Modal'
 
 const schema = z.object({
   firmenname: z.string().optional(),
@@ -70,6 +71,8 @@ export function KundeErstellenModal({ onSave, onClose }: Props) {
   const istEuAusland = !!watchLand && watchLand !== 'DE' && istEuLand(watchLand)
   const ustIdnrLabel = istEuAusland ? 'USt-IdNr.' : 'USt-IdNr. / Steuernummer'
   const ustIdnrPlaceholder = istEuAusland ? 'z.B. DE123456789' : 'DE123456789 oder 12/345/67890'
+  // Firmenname/Straße/PLZ/Ort sind nur Pflicht, wenn ZUGFeRD aktiv ist (superRefine oben).
+  const zugferdPflicht = !!(watchZugferd || zugferdAutoAktiv)
 
   useEffect(() => {
     if (zugferdAutoAktiv) setValue('zugferd_aktiv', true)
@@ -94,149 +97,155 @@ export function KundeErstellenModal({ onSave, onClose }: Props) {
   })
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50" onClick={onClose}>
-      <div
-        className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto"
-        onClick={e => e.stopPropagation()}
-      >
-        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4">Neuer Kunde</h3>
+    <Modal
+      title="Neuer Kunde"
+      onClose={onClose}
+      panelClassName="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto"
+    >
+      <form onSubmit={(e) => { e.preventDefault(); e.stopPropagation() }} className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="col-span-2">
+            <label htmlFor="kunde-firmenname" className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Firmenname</label>
+            <input
+              id="kunde-firmenname"
+              autoFocus
+              type="text"
+              {...register('firmenname')}
+              aria-required={zugferdPflicht}
+              aria-describedby={errors.firmenname ? 'kunde-firmenname-error' : undefined}
+              className={errors.firmenname ? inpErr : inp}
+            />
+            {errors.firmenname && <p id="kunde-firmenname-error" className="text-red-500 text-xs mt-0.5">{errors.firmenname.message}</p>}
+          </div>
 
-        <form onSubmit={(e) => { e.preventDefault(); e.stopPropagation() }} className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2">
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Firmenname</label>
-              <input autoFocus type="text" {...register('firmenname')} className={errors.firmenname ? inpErr : inp} />
-              {errors.firmenname && <p className="text-red-500 text-xs mt-0.5">{errors.firmenname.message}</p>}
-            </div>
+          <div>
+            <label htmlFor="kunde-vorname" className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Vorname</label>
+            <input id="kunde-vorname" type="text" {...register('vorname')} className={inp} />
+          </div>
+          <div>
+            <label htmlFor="kunde-nachname" className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Nachname</label>
+            <input id="kunde-nachname" type="text" {...register('nachname')} className={inp} />
+          </div>
 
-            <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Vorname</label>
-              <input type="text" {...register('vorname')} className={inp} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Nachname</label>
-              <input type="text" {...register('nachname')} className={inp} />
-            </div>
-
-            <div className="col-span-2">
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Adresse</label>
-              <div className="grid grid-cols-3 gap-2">
-                <input type="text" {...register('strasse')} placeholder="Straße" className={`col-span-2 ${errors.strasse ? inpErr : inp}`} />
-                <input type="text" {...register('hausnummer')} placeholder="Nr." className={inp} />
-                <input type="text" {...register('plz')} placeholder="PLZ" className={errors.plz ? inpErr : inp} />
-                <input type="text" {...register('ort')} placeholder="Ort" className={`col-span-2 ${errors.ort ? inpErr : inp}`} />
-                <div className="col-span-3">
-                  <LandCombobox value={watchLand ?? ''} onChange={(code) => setValue('land', code)} />
-                </div>
-              </div>
-              {(errors.strasse || errors.plz || errors.ort) && (
-                <p className="text-red-500 text-xs mt-0.5">Straße, PLZ und Ort sind für ZUGFeRD Pflichtfelder</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">E-Mail</label>
-              <input type="email" {...register('email')} className={inp} />
-              {errors.email && <p className="text-red-500 text-xs mt-0.5">{errors.email.message}</p>}
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Telefon</label>
-              <input type="text" {...register('telefon')} className={inp} />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Kundennummer</label>
-              <input type="text" {...register('kundennummer')} placeholder="Wird automatisch vergeben" className={inp} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">{ustIdnrLabel}</label>
-              <input type="text" {...register('ust_idnr')} placeholder={ustIdnrPlaceholder} className={inp} />
-              {istEuAusland && (
-                <p className="text-slate-400 dark:text-slate-500 text-xs mt-0.5">Für ig. Lieferungen/Zusammenfassende Meldung erforderlich – keine Steuernummer.</p>
-              )}
-            </div>
-
-            <div className="col-span-2">
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">z.Hd. von</label>
-              <input type="text" {...register('z_hd')} placeholder="z.B. Max Mustermann oder Buchhaltung" className={inp} />
-            </div>
-
-            <div className="col-span-2">
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Skonto (kundenspezifisch)</label>
-              <div className="flex items-center gap-2">
-                <input type="number" min={0} max={100} step={0.5}
-                  {...register('skonto_prozent', { setValueAs: v => v === '' || v == null ? null : parseFloat(v) })}
-                  placeholder="z. B. 2"
-                  className="w-20 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100" />
-                <span className="text-xs text-slate-500 dark:text-slate-400">% innerhalb von</span>
-                <input type="number" min={1} max={365}
-                  {...register('skonto_tage', { setValueAs: v => v === '' || v == null ? null : parseInt(v) })}
-                  placeholder="z. B. 10"
-                  className="w-20 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100" />
-                <span className="text-xs text-slate-500 dark:text-slate-400">Tagen</span>
+          <div className="col-span-2">
+            <label htmlFor="kunde-strasse" className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Adresse</label>
+            <div className="grid grid-cols-3 gap-2">
+              <input id="kunde-strasse" type="text" {...register('strasse')} placeholder="Straße" aria-required={zugferdPflicht} aria-describedby={errors.strasse ? 'kunde-adresse-error' : undefined} className={`col-span-2 ${errors.strasse ? inpErr : inp}`} />
+              <input id="kunde-hausnummer" type="text" {...register('hausnummer')} placeholder="Nr." className={inp} />
+              <input id="kunde-plz" type="text" {...register('plz')} placeholder="PLZ" aria-required={zugferdPflicht} aria-describedby={errors.plz ? 'kunde-adresse-error' : undefined} className={errors.plz ? inpErr : inp} />
+              <input id="kunde-ort" type="text" {...register('ort')} placeholder="Ort" aria-required={zugferdPflicht} aria-describedby={errors.ort ? 'kunde-adresse-error' : undefined} className={`col-span-2 ${errors.ort ? inpErr : inp}`} />
+              <div className="col-span-3">
+                <LandCombobox value={watchLand ?? ''} onChange={(code) => setValue('land', code)} />
               </div>
             </div>
+            {(errors.strasse || errors.plz || errors.ort) && (
+              <p id="kunde-adresse-error" className="text-red-500 text-xs mt-0.5">Straße, PLZ und Ort sind für ZUGFeRD Pflichtfelder</p>
+            )}
+          </div>
 
-            <div className="col-span-2">
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Notizen</label>
-              <textarea {...register('notizen')} rows={2} className={inp} />
-            </div>
+          <div>
+            <label htmlFor="kunde-email" className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">E-Mail</label>
+            <input id="kunde-email" type="email" {...register('email')} aria-describedby={errors.email ? 'kunde-email-error' : undefined} className={inp} />
+            {errors.email && <p id="kunde-email-error" className="text-red-500 text-xs mt-0.5">{errors.email.message}</p>}
+          </div>
+          <div>
+            <label htmlFor="kunde-telefon" className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Telefon</label>
+            <input id="kunde-telefon" type="text" {...register('telefon')} className={inp} />
+          </div>
 
-            <div className="col-span-2 flex gap-4">
-              <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 cursor-pointer">
-                <input type="checkbox" {...register('ist_verein')} className="rounded" /> Verein
-              </label>
-              <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 cursor-pointer">
-                <input type="checkbox" {...register('ist_gemeinnuetzig')} className="rounded" /> Gemeinnützig
-              </label>
-            </div>
+          <div>
+            <label htmlFor="kunde-kundennummer" className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Kundennummer</label>
+            <input id="kunde-kundennummer" type="text" {...register('kundennummer')} placeholder="Wird automatisch vergeben" className={inp} />
+          </div>
+          <div>
+            <label htmlFor="kunde-ust-idnr" className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">{ustIdnrLabel}</label>
+            <input id="kunde-ust-idnr" type="text" {...register('ust_idnr')} placeholder={ustIdnrPlaceholder} className={inp} />
+            {istEuAusland && (
+              <p className="text-slate-400 dark:text-slate-500 text-xs mt-0.5">Für ig. Lieferungen/Zusammenfassende Meldung erforderlich – keine Steuernummer.</p>
+            )}
+          </div>
 
-            <div className="col-span-2">
-              <label className={`flex items-start gap-2 text-sm cursor-pointer ${zugferdAutoAktiv ? 'text-slate-400 dark:text-slate-500' : 'text-slate-600 dark:text-slate-300'}`}>
-                <input
-                  type="checkbox"
-                  className="rounded mt-0.5"
-                  disabled={zugferdAutoAktiv}
-                  checked={zugferdAutoAktiv || undefined}
-                  {...(!zugferdAutoAktiv ? register('zugferd_aktiv') : {})}
-                  onChange={zugferdAutoAktiv ? undefined : (e) => setValue('zugferd_aktiv', e.target.checked)}
-                />
-                <span>
-                  ZUGFeRD / E-Rechnung
-                  {zugferdAutoAktiv
-                    ? <span className="ml-1 text-xs text-blue-500 dark:text-blue-400">(automatisch aktiv)</span>
-                    : <span className="ml-1 text-xs text-slate-400 dark:text-slate-500">PDF enthält maschinenlesbares XML</span>}
-                </span>
-              </label>
-              {zugferdOhneUstId && (
-                <p className="text-amber-600 dark:text-amber-400 text-xs mt-1 ml-6">
-                  Hinweis: Ohne USt-IdNr. ist das ZUGFeRD-XML steuerlich unvollständig.
-                </p>
-              )}
+          <div className="col-span-2">
+            <label htmlFor="kunde-z-hd" className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">z.Hd. von</label>
+            <input id="kunde-z-hd" type="text" {...register('z_hd')} placeholder="z.B. Max Mustermann oder Buchhaltung" className={inp} />
+          </div>
+
+          <div className="col-span-2">
+            <label htmlFor="kunde-skonto-prozent" className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Skonto (kundenspezifisch)</label>
+            <div className="flex items-center gap-2">
+              <input id="kunde-skonto-prozent" type="number" min={0} max={100} step={0.5}
+                {...register('skonto_prozent', { setValueAs: v => v === '' || v == null ? null : parseFloat(v) })}
+                placeholder="z. B. 2"
+                className="w-20 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100" />
+              <span className="text-xs text-slate-500 dark:text-slate-400">% innerhalb von</span>
+              <input id="kunde-skonto-tage" type="number" min={1} max={365}
+                {...register('skonto_tage', { setValueAs: v => v === '' || v == null ? null : parseInt(v) })}
+                placeholder="z. B. 10"
+                className="w-20 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100" />
+              <span className="text-xs text-slate-500 dark:text-slate-400">Tagen</span>
             </div>
           </div>
 
-          {mut.isError && <p className="text-red-600 text-xs">{(mut.error as Error).message}</p>}
-
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 rounded-lg py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700"
-            >
-              Abbrechen
-            </button>
-            <button
-              type="button"
-              disabled={mut.isPending}
-              onClick={() => handleSubmit(v => mut.mutate(v))()}
-              className="flex-1 bg-blue-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
-            >
-              {mut.isPending ? 'Wird angelegt…' : 'Anlegen'}
-            </button>
+          <div className="col-span-2">
+            <label htmlFor="kunde-notizen" className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Notizen</label>
+            <textarea id="kunde-notizen" {...register('notizen')} rows={2} className={inp} />
           </div>
-        </form>
-      </div>
-    </div>
+
+          <div className="col-span-2 flex gap-4">
+            <label htmlFor="kunde-ist-verein" className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 cursor-pointer">
+              <input id="kunde-ist-verein" type="checkbox" {...register('ist_verein')} className="rounded" /> Verein
+            </label>
+            <label htmlFor="kunde-ist-gemeinnuetzig" className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 cursor-pointer">
+              <input id="kunde-ist-gemeinnuetzig" type="checkbox" {...register('ist_gemeinnuetzig')} className="rounded" /> Gemeinnützig
+            </label>
+          </div>
+
+          <div className="col-span-2">
+            <label htmlFor="kunde-zugferd-aktiv" className={`flex items-start gap-2 text-sm cursor-pointer ${zugferdAutoAktiv ? 'text-slate-400 dark:text-slate-500' : 'text-slate-600 dark:text-slate-300'}`}>
+              <input
+                id="kunde-zugferd-aktiv"
+                type="checkbox"
+                className="rounded mt-0.5"
+                disabled={zugferdAutoAktiv}
+                checked={zugferdAutoAktiv || undefined}
+                {...(!zugferdAutoAktiv ? register('zugferd_aktiv') : {})}
+                onChange={zugferdAutoAktiv ? undefined : (e) => setValue('zugferd_aktiv', e.target.checked)}
+              />
+              <span>
+                ZUGFeRD / E-Rechnung
+                {zugferdAutoAktiv
+                  ? <span className="ml-1 text-xs text-blue-500 dark:text-blue-400">(automatisch aktiv)</span>
+                  : <span className="ml-1 text-xs text-slate-400 dark:text-slate-500">PDF enthält maschinenlesbares XML</span>}
+              </span>
+            </label>
+            {zugferdOhneUstId && (
+              <p className="text-amber-600 dark:text-amber-400 text-xs mt-1 ml-6">
+                Hinweis: Ohne USt-IdNr. ist das ZUGFeRD-XML steuerlich unvollständig.
+              </p>
+            )}
+          </div>
+        </div>
+
+        {mut.isError && <p className="text-red-600 text-xs">{(mut.error as Error).message}</p>}
+
+        <div className="flex gap-3 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 rounded-lg py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700"
+          >
+            Abbrechen
+          </button>
+          <button
+            type="button"
+            disabled={mut.isPending}
+            onClick={() => handleSubmit(v => mut.mutate(v))()}
+            className="flex-1 bg-blue-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+          >
+            {mut.isPending ? 'Wird angelegt…' : 'Anlegen'}
+          </button>
+        </div>
+      </form>
+    </Modal>
   )
 }

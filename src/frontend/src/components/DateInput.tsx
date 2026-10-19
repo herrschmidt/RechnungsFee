@@ -210,7 +210,12 @@ export function DateInput({ value, onChange, required, className, min, max }: Da
   }
 
   return (
-    <div className="relative">
+    <div
+      className="relative"
+      onKeyDown={(e) => {
+        if (pickerOffen && e.key === 'Escape') e.preventDefault()
+      }}
+    >
       <input
         type="text"
         inputMode="numeric"

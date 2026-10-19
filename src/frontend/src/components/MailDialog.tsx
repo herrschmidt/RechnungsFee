@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { sendeMailMitAnhang, type Rechnung, type Unternehmen, type MailSendenRequest } from '../api/client'
+import { Modal } from './Modal'
 
 type DokumentTyp = 'Rechnung' | 'Angebot' | 'Proforma' | 'Auftrag'
 
@@ -95,62 +96,62 @@ export function MailDialog({ dokument, dokumentTyp, unternehmen, onClose }: Prop
   const inputCls = 'w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-slate-700 dark:text-slate-100'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-2xl flex flex-col gap-4 p-6 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">
-            ✉️ {dokumentTyp} per Mail senden
-          </h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-lg leading-none">✕</button>
-        </div>
-
-        {gesendet ? (
-          <div className="flex items-center gap-2 text-green-600 dark:text-green-400 text-sm font-medium py-4">
-            ✓ Mail wurde gesendet
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-slate-500 dark:text-slate-400">An *</label>
-                <input type="email" value={an} onChange={e => setAn(e.target.value)} className={inputCls} placeholder="empfaenger@beispiel.de" />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-slate-500 dark:text-slate-400">CC</label>
-                <input type="email" value={cc} onChange={e => setCc(e.target.value)} className={inputCls} placeholder="optional" />
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Betreff</label>
-              <input type="text" value={betreff} onChange={e => setBetreff(e.target.value)} className={inputCls} />
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Text</label>
-              <textarea value={text} onChange={e => setText(e.target.value)} rows={8} className={inputCls + ' resize-y'} />
-            </div>
-
-            <div className="text-xs text-slate-400 dark:text-slate-500">
-              Anhänge: <span className="font-medium text-slate-600 dark:text-slate-300">{dokumentTyp}_{dokument.rechnungsnummer ?? dokument.id}.pdf</span>
-              {dokument.dokumentenpaket_id && <span className="ml-2">+ Dokumentenpaket</span>}
-            </div>
-
-            {fehler && (
-              <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg">{fehler}</div>
-            )}
-
-            <div className="flex gap-2 justify-end pt-1">
-              <button onClick={onClose} className="px-4 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">
-                Abbrechen
-              </button>
-              <button onClick={senden} disabled={!an.trim() || sendet} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
-                {sendet ? 'Wird gesendet…' : '✉️ Senden'}
-              </button>
-            </div>
-          </>
-        )}
+    <Modal
+      title={<>✉️ {dokumentTyp} per Mail senden</>}
+      onClose={onClose}
+      panelClassName="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-2xl flex flex-col gap-4 p-6 max-h-[90vh] overflow-y-auto"
+     
+    >
+      <div className="flex items-center justify-end">
+        <button onClick={onClose} aria-label="Dialog schließen" className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-lg leading-none">✕</button>
       </div>
-    </div>
+
+      {gesendet ? (
+        <div className="flex items-center gap-2 text-green-600 dark:text-green-400 text-sm font-medium py-4">
+          ✓ Mail wurde gesendet
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1">
+              <label htmlFor="mail-an" className="text-xs font-medium text-slate-500 dark:text-slate-400">An *</label>
+              <input id="mail-an" aria-required="true" type="email" value={an} onChange={e => setAn(e.target.value)} className={inputCls} placeholder="empfaenger@beispiel.de" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="mail-cc" className="text-xs font-medium text-slate-500 dark:text-slate-400">CC</label>
+              <input id="mail-cc" type="email" value={cc} onChange={e => setCc(e.target.value)} className={inputCls} placeholder="optional" />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label htmlFor="mail-betreff" className="text-xs font-medium text-slate-500 dark:text-slate-400">Betreff</label>
+            <input id="mail-betreff" type="text" value={betreff} onChange={e => setBetreff(e.target.value)} className={inputCls} />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label htmlFor="mail-text" className="text-xs font-medium text-slate-500 dark:text-slate-400">Text</label>
+            <textarea id="mail-text" value={text} onChange={e => setText(e.target.value)} rows={8} className={inputCls + ' resize-y'} />
+          </div>
+
+          <div className="text-xs text-slate-400 dark:text-slate-500">
+            Anhänge: <span className="font-medium text-slate-600 dark:text-slate-300">{dokumentTyp}_{dokument.rechnungsnummer ?? dokument.id}.pdf</span>
+            {dokument.dokumentenpaket_id && <span className="ml-2">+ Dokumentenpaket</span>}
+          </div>
+
+          {fehler && (
+            <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg">{fehler}</div>
+          )}
+
+          <div className="flex gap-2 justify-end pt-1">
+            <button onClick={onClose} className="px-4 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">
+              Abbrechen
+            </button>
+            <button onClick={senden} disabled={!an.trim() || sendet} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+              {sendet ? 'Wird gesendet…' : '✉️ Senden'}
+            </button>
+          </div>
+        </>
+      )}
+    </Modal>
   )
 }

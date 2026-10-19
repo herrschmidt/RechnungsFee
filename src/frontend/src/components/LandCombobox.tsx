@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useId } from 'react'
 import { LAENDER, type Land } from '../utils/laender'
 
 /**
@@ -22,6 +22,7 @@ export function LandCombobox({
   const [query, setQuery] = useState(() => aktuellesLand()?.name ?? '')
   const [offen, setOffen] = useState(false)
   const [highlightIdx, setHighlightIdx] = useState(0)
+  const listboxId = useId()
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -82,6 +83,7 @@ export function LandCombobox({
       e.preventDefault()
     } else if (e.key === 'Escape') {
       setOffen(false)
+      e.preventDefault()
     }
   }
 
@@ -105,6 +107,12 @@ export function LandCombobox({
           onFocus={() => setOffen(true)}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
+          role="combobox"
+          aria-label="Land"
+          aria-expanded={offen}
+          aria-controls={listboxId}
+          aria-activedescendant={offen && gefiltert[highlightIdx] ? `${listboxId}-${gefiltert[highlightIdx].code}` : undefined}
+          aria-autocomplete="list"
           placeholder={placeholder}
           className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-400"
         />
@@ -118,38 +126,45 @@ export function LandCombobox({
         </button>
       </div>
 
-      {offen && (
-        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg max-h-64 overflow-y-auto">
-          {gefiltert.length === 0 ? (
-            <div className="px-3 py-2.5 text-sm text-slate-400 dark:text-slate-500 italic">
-              Kein Treffer
-            </div>
-          ) : (
-            <>
-              {gefiltert.map((land, idx) => (
-                <button
-                  key={land.code}
-                  type="button"
-                  onMouseDown={() => handleSelect(land)}
-                  onMouseEnter={() => setHighlightIdx(idx)}
-                  className={`w-full text-left px-3 py-2 text-sm transition-colors ${
-                    idx === highlightIdx
-                      ? 'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300'
-                      : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'
-                  }`}
-                >
-                  {land.name}
-                </button>
-              ))}
-              {mehrVorhanden && (
-                <div className="px-3 py-2 text-xs text-slate-400 dark:text-slate-500 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
-                  Weitere Treffer – Suche verfeinern
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
+      <div
+        id={listboxId}
+        role="listbox"
+        hidden={!offen}
+        className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg max-h-64 overflow-y-auto"
+      >
+        {gefiltert.length === 0 ? (
+          <div className="px-3 py-2.5 text-sm text-slate-400 dark:text-slate-500 italic">
+            Kein Treffer
+          </div>
+        ) : (
+          <>
+            {gefiltert.map((land, idx) => (
+              <button
+                key={land.code}
+                type="button"
+                tabIndex={-1}
+                id={`${listboxId}-${land.code}`}
+                role="option"
+                aria-selected={land.code === value}
+                onMouseDown={() => handleSelect(land)}
+                onMouseEnter={() => setHighlightIdx(idx)}
+                className={`w-full text-left px-3 py-2 text-sm transition-colors ${
+                  idx === highlightIdx
+                    ? 'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300'
+                    : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'
+                }`}
+              >
+                {land.name}
+              </button>
+            ))}
+            {mehrVorhanden && (
+              <div className="px-3 py-2 text-xs text-slate-400 dark:text-slate-500 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
+                Weitere Treffer – Suche verfeinern
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   )
 }

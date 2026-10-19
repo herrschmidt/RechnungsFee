@@ -87,6 +87,7 @@ export function StammdatenCombobox({
       e.preventDefault()
     } else if (e.key === 'Escape') {
       setOffen(false)
+      e.preventDefault()
     }
   }
 

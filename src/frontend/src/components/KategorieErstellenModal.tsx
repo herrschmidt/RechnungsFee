@@ -4,6 +4,7 @@ import {
   createKategorie, getUnternehmen,
   type Kategorie, type KategorieCreate,
 } from '../api/client'
+import { Modal } from './Modal'
 
 const LEER: KategorieCreate = {
   name: '', kontenart: 'Aufwand', konto_skr03: '', konto_skr04: '',
@@ -49,147 +50,158 @@ export function KategorieErstellenModal({ onSave, onClose, kontenPflicht = false
     (!hatEks || !!form.eks_kategorie?.trim())
 
   const inputCls = 'mt-1 w-full rounded-lg px-3 py-2 text-sm dark:bg-slate-700 dark:text-slate-100'
-  const label = (text: string, pflicht: boolean) => (
-    <label className="text-xs font-medium text-slate-500 dark:text-slate-400">
+  const label = (text: string, pflicht: boolean, id: string) => (
+    <label htmlFor={id} className="text-xs font-medium text-slate-500 dark:text-slate-400">
       {text} {pflicht && <span className="text-red-500">*</span>}
     </label>
   )
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50" onClick={onClose}>
-      <div
-        className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-4"
-        onClick={e => e.stopPropagation()}
-      >
-        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Neue Kategorie anlegen</h3>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div className="col-span-2">
-            {label('Bezeichnung', true)}
-            <input
-              autoFocus
-              className={`${inputCls} border ${pflichtCls(form.name, true)}`}
-              value={form.name}
-              onChange={e => set('name', e.target.value)}
-              placeholder="z.B. Fachzeitschriften"
-            />
-          </div>
-
-          <div>
-            {label('Kontenart', true)}
-            <select
-              className={`${inputCls} border border-slate-300 dark:border-slate-600`}
-              value={form.kontenart}
-              onChange={e => set('kontenart', e.target.value)}
-            >
-              <option>Aufwand</option>
-              <option>Erlös</option>
-              <option>Anlage</option>
-              <option>Privat</option>
-            </select>
-          </div>
-
-          <div>
-            {label('USt-Satz Standard', false)}
-            <select
-              className={`${inputCls} border border-slate-300 dark:border-slate-600`}
-              value={form.ust_satz_standard}
-              onChange={e => set('ust_satz_standard', Number(e.target.value))}
-            >
-              <option value={0}>0 % (§19 / steuerfrei)</option>
-              <option value={7}>7 %</option>
-              <option value={19}>19 %</option>
-            </select>
-          </div>
-
-          <div>
-            {label('SKR03-Konto', kontenPflicht)}
-            <input
-              className={`${inputCls} border font-mono ${pflichtCls(form.konto_skr03 ?? '', kontenPflicht)}`}
-              value={form.konto_skr03 ?? ''}
-              onChange={e => set('konto_skr03', e.target.value)}
-              placeholder="z.B. 4945"
-              maxLength={10}
-            />
-          </div>
-
-          <div>
-            {label('SKR04-Konto', kontenPflicht)}
-            <input
-              className={`${inputCls} border font-mono ${pflichtCls(form.konto_skr04 ?? '', kontenPflicht)}`}
-              value={form.konto_skr04 ?? ''}
-              onChange={e => set('konto_skr04', e.target.value)}
-              placeholder="z.B. 6821"
-              maxLength={10}
-            />
-          </div>
-
-          <div>
-            {label('EÜR-Zeile', false)}
-            <input
-              type="number"
-              className={`${inputCls} border border-slate-300 dark:border-slate-600`}
-              value={form.euer_zeile ?? ''}
-              onChange={e => set('euer_zeile', e.target.value ? Number(e.target.value) : undefined)}
-              placeholder="optional"
-            />
-          </div>
-
-          {hatEks && (
-            <div>
-              {label('EKS-Feld', true)}
-              <input
-                className={`${inputCls} border font-mono ${pflichtCls(form.eks_kategorie ?? '', true)}`}
-                value={form.eks_kategorie ?? ''}
-                onChange={e => set('eks_kategorie', e.target.value)}
-                placeholder="z.B. B13"
-              />
-            </div>
-          )}
-
-          <div>
-            {label('Vorsteuer %', false)}
-            <input
-              type="number"
-              min={0} max={100}
-              className={`${inputCls} border border-slate-300 dark:border-slate-600`}
-              value={form.vorsteuer_prozent ?? 100}
-              onChange={e => set('vorsteuer_prozent', Number(e.target.value))}
-            />
-          </div>
-
-          <div className="col-span-2">
-            {label('Verwendungsbeispiele', false)}
-            <textarea
-              rows={2}
-              className={`${inputCls} border border-slate-300 dark:border-slate-600 resize-none`}
-              value={form.beschreibung ?? ''}
-              onChange={e => set('beschreibung', e.target.value)}
-              placeholder="z. B. was gehört in diese Kategorie, was nicht …"
-            />
-          </div>
+    <Modal
+      title="Neue Kategorie anlegen"
+      onClose={onClose}
+      panelClassName="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-4"
+    >
+      <div className="grid grid-cols-2 gap-3">
+        <div className="col-span-2">
+          {label('Bezeichnung', true, 'kat-name')}
+          <input
+            id="kat-name"
+            autoFocus
+            aria-required={true}
+            className={`${inputCls} border ${pflichtCls(form.name, true)}`}
+            value={form.name}
+            onChange={e => set('name', e.target.value)}
+            placeholder="z.B. Fachzeitschriften"
+          />
         </div>
 
-        {err && <p className="text-xs text-red-500">{err}</p>}
+        <div>
+          {label('Kontenart', true, 'kat-kontenart')}
+          <select
+            id="kat-kontenart"
+            aria-required={true}
+            className={`${inputCls} border border-slate-300 dark:border-slate-600`}
+            value={form.kontenart}
+            onChange={e => set('kontenart', e.target.value)}
+          >
+            <option>Aufwand</option>
+            <option>Erlös</option>
+            <option>Anlage</option>
+            <option>Privat</option>
+          </select>
+        </div>
 
-        <div className="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+        <div>
+          {label('USt-Satz Standard', false, 'kat-ust-satz-standard')}
+          <select
+            id="kat-ust-satz-standard"
+            className={`${inputCls} border border-slate-300 dark:border-slate-600`}
+            value={form.ust_satz_standard}
+            onChange={e => set('ust_satz_standard', Number(e.target.value))}
           >
-            Abbrechen
-          </button>
-          <button
-            type="button"
-            disabled={!kannSpeichern || mut.isPending}
-            onClick={(e) => { e.stopPropagation(); mut.mutate(form) }}
-            className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            {mut.isPending ? 'Wird angelegt…' : 'Anlegen'}
-          </button>
+            <option value={0}>0 % (§19 / steuerfrei)</option>
+            <option value={7}>7 %</option>
+            <option value={19}>19 %</option>
+          </select>
+        </div>
+
+        <div>
+          {label('SKR03-Konto', kontenPflicht, 'kat-skr03')}
+          <input
+            id="kat-skr03"
+            aria-required={kontenPflicht}
+            className={`${inputCls} border font-mono ${pflichtCls(form.konto_skr03 ?? '', kontenPflicht)}`}
+            value={form.konto_skr03 ?? ''}
+            onChange={e => set('konto_skr03', e.target.value)}
+            placeholder="z.B. 4945"
+            maxLength={10}
+          />
+        </div>
+
+        <div>
+          {label('SKR04-Konto', kontenPflicht, 'kat-skr04')}
+          <input
+            id="kat-skr04"
+            aria-required={kontenPflicht}
+            className={`${inputCls} border font-mono ${pflichtCls(form.konto_skr04 ?? '', kontenPflicht)}`}
+            value={form.konto_skr04 ?? ''}
+            onChange={e => set('konto_skr04', e.target.value)}
+            placeholder="z.B. 6821"
+            maxLength={10}
+          />
+        </div>
+
+        <div>
+          {label('EÜR-Zeile', false, 'kat-euer-zeile')}
+          <input
+            id="kat-euer-zeile"
+            type="number"
+            className={`${inputCls} border border-slate-300 dark:border-slate-600`}
+            value={form.euer_zeile ?? ''}
+            onChange={e => set('euer_zeile', e.target.value ? Number(e.target.value) : undefined)}
+            placeholder="optional"
+          />
+        </div>
+
+        {hatEks && (
+          <div>
+            {label('EKS-Feld', true, 'kat-eks-feld')}
+            <input
+              id="kat-eks-feld"
+              aria-required={true}
+              className={`${inputCls} border font-mono ${pflichtCls(form.eks_kategorie ?? '', true)}`}
+              value={form.eks_kategorie ?? ''}
+              onChange={e => set('eks_kategorie', e.target.value)}
+              placeholder="z.B. B13"
+            />
+          </div>
+        )}
+
+        <div>
+          {label('Vorsteuer %', false, 'kat-vorsteuer-prozent')}
+          <input
+            id="kat-vorsteuer-prozent"
+            type="number"
+            min={0} max={100}
+            className={`${inputCls} border border-slate-300 dark:border-slate-600`}
+            value={form.vorsteuer_prozent ?? 100}
+            onChange={e => set('vorsteuer_prozent', Number(e.target.value))}
+          />
+        </div>
+
+        <div className="col-span-2">
+          {label('Verwendungsbeispiele', false, 'kat-beschreibung')}
+          <textarea
+            id="kat-beschreibung"
+            rows={2}
+            className={`${inputCls} border border-slate-300 dark:border-slate-600 resize-none`}
+            value={form.beschreibung ?? ''}
+            onChange={e => set('beschreibung', e.target.value)}
+            placeholder="z. B. was gehört in diese Kategorie, was nicht …"
+          />
         </div>
       </div>
-    </div>
+
+      {err && <p className="text-xs text-red-500">{err}</p>}
+
+      <div className="flex justify-end gap-2 pt-2">
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-4 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+        >
+          Abbrechen
+        </button>
+        <button
+          type="button"
+          disabled={!kannSpeichern || mut.isPending}
+          onClick={(e) => { e.stopPropagation(); mut.mutate(form) }}
+          className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+        >
+          {mut.isPending ? 'Wird angelegt…' : 'Anlegen'}
+        </button>
+      </div>
+    </Modal>
   )
 }

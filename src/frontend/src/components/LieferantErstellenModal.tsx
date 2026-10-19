@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { createLieferant, type Lieferant } from '../api/client'
 import { LandCombobox } from './LandCombobox'
+import { Modal } from './Modal'
 
 const schema = z.object({
   firmenname: z.string().min(1, 'Firmenname erforderlich'),
@@ -65,96 +66,101 @@ export function LieferantErstellenModal({ onSave, onClose, initial }: Props) {
   })
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50" onClick={onClose}>
-      <div
-        className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto"
-        onClick={e => e.stopPropagation()}
-      >
-        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4">Neuer Lieferant</h3>
+    <Modal
+      title="Neuer Lieferant"
+      onClose={onClose}
+      panelClassName="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto"
+    >
+      <form onSubmit={(e) => { e.preventDefault(); e.stopPropagation() }} className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="col-span-2">
+            <label htmlFor="lieferant-firmenname" className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Firmenname *</label>
+            <input
+              id="lieferant-firmenname"
+              autoFocus
+              type="text"
+              {...register('firmenname')}
+              aria-required={true}
+              aria-describedby={errors.firmenname ? 'lieferant-firmenname-error' : undefined}
+              className={inp}
+            />
+            {errors.firmenname && <p id="lieferant-firmenname-error" className="text-red-500 text-xs mt-0.5">{errors.firmenname.message}</p>}
+          </div>
 
-        <form onSubmit={(e) => { e.preventDefault(); e.stopPropagation() }} className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2">
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Firmenname *</label>
-              <input autoFocus type="text" {...register('firmenname')} className={inp} />
-              {errors.firmenname && <p className="text-red-500 text-xs mt-0.5">{errors.firmenname.message}</p>}
-            </div>
+          <div>
+            <label htmlFor="lieferant-vorname" className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Vorname</label>
+            <input id="lieferant-vorname" type="text" {...register('vorname')} className={inp} />
+          </div>
+          <div>
+            <label htmlFor="lieferant-nachname" className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Nachname</label>
+            <input id="lieferant-nachname" type="text" {...register('nachname')} className={inp} />
+          </div>
 
-            <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Vorname</label>
-              <input type="text" {...register('vorname')} className={inp} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Nachname</label>
-              <input type="text" {...register('nachname')} className={inp} />
-            </div>
-
-            <div className="col-span-2">
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Adresse</label>
-              <div className="grid grid-cols-3 gap-2">
-                <input type="text" {...register('strasse')} placeholder="Straße" className={`col-span-2 ${inp}`} />
-                <input type="text" {...register('hausnummer')} placeholder="Nr." className={inp} />
-                <input type="text" {...register('plz')} placeholder="PLZ" className={inp} />
-                <input type="text" {...register('ort')} placeholder="Ort" className={`col-span-2 ${inp}`} />
-                <div className="col-span-3">
-                  <LandCombobox value={watch('land') ?? ''} onChange={(code) => setValue('land', code)} />
-                </div>
+          <div className="col-span-2">
+            <label htmlFor="lieferant-strasse" className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Adresse</label>
+            <div className="grid grid-cols-3 gap-2">
+              <input id="lieferant-strasse" type="text" {...register('strasse')} placeholder="Straße" className={`col-span-2 ${inp}`} />
+              <input id="lieferant-hausnummer" type="text" {...register('hausnummer')} placeholder="Nr." className={inp} />
+              <input id="lieferant-plz" type="text" {...register('plz')} placeholder="PLZ" className={inp} />
+              <input id="lieferant-ort" type="text" {...register('ort')} placeholder="Ort" className={`col-span-2 ${inp}`} />
+              <div className="col-span-3">
+                <LandCombobox value={watch('land') ?? ''} onChange={(code) => setValue('land', code)} />
               </div>
             </div>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">E-Mail</label>
-              <input type="email" {...register('email')} className={inp} />
-              {errors.email && <p className="text-red-500 text-xs mt-0.5">{errors.email.message}</p>}
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Telefon</label>
-              <input type="text" {...register('telefon')} className={inp} />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Lieferantennummer</label>
-              <input type="text" {...register('lieferantennummer')} placeholder="Wird automatisch vergeben" className={inp} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">USt-IdNr.</label>
-              <input type="text" {...register('ust_idnr')} className={inp} />
-            </div>
-
-            <div className="col-span-2">
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">z.Hd. von</label>
-              <input type="text" {...register('z_hd')} placeholder="z.B. Max Mustermann oder Buchhaltung" className={inp} />
-            </div>
-
-            <div className="col-span-2">
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Notizen</label>
-              <textarea {...register('notizen')} rows={2} className={inp} />
-            </div>
           </div>
 
-          {mut.isError && (
-            <p className="text-red-600 text-xs">{(mut.error as Error).message}</p>
-          )}
-
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 rounded-lg py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700"
-            >
-              Abbrechen
-            </button>
-            <button
-              type="button"
-              disabled={mut.isPending}
-              onClick={() => handleSubmit(v => mut.mutate(v))()}
-              className="flex-1 bg-blue-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
-            >
-              {mut.isPending ? 'Wird angelegt…' : 'Anlegen'}
-            </button>
+          <div>
+            <label htmlFor="lieferant-email" className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">E-Mail</label>
+            <input id="lieferant-email" type="email" {...register('email')} aria-describedby={errors.email ? 'lieferant-email-error' : undefined} className={inp} />
+            {errors.email && <p id="lieferant-email-error" className="text-red-500 text-xs mt-0.5">{errors.email.message}</p>}
           </div>
-        </form>
-      </div>
-    </div>
+          <div>
+            <label htmlFor="lieferant-telefon" className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Telefon</label>
+            <input id="lieferant-telefon" type="text" {...register('telefon')} className={inp} />
+          </div>
+
+          <div>
+            <label htmlFor="lieferant-lieferantennummer" className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Lieferantennummer</label>
+            <input id="lieferant-lieferantennummer" type="text" {...register('lieferantennummer')} placeholder="Wird automatisch vergeben" className={inp} />
+          </div>
+          <div>
+            <label htmlFor="lieferant-ust-idnr" className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">USt-IdNr.</label>
+            <input id="lieferant-ust-idnr" type="text" {...register('ust_idnr')} className={inp} />
+          </div>
+
+          <div className="col-span-2">
+            <label htmlFor="lieferant-z-hd" className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">z.Hd. von</label>
+            <input id="lieferant-z-hd" type="text" {...register('z_hd')} placeholder="z.B. Max Mustermann oder Buchhaltung" className={inp} />
+          </div>
+
+          <div className="col-span-2">
+            <label htmlFor="lieferant-notizen" className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Notizen</label>
+            <textarea id="lieferant-notizen" {...register('notizen')} rows={2} className={inp} />
+          </div>
+        </div>
+
+        {mut.isError && (
+          <p className="text-red-600 text-xs">{(mut.error as Error).message}</p>
+        )}
+
+        <div className="flex gap-3 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 rounded-lg py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700"
+          >
+            Abbrechen
+          </button>
+          <button
+            type="button"
+            disabled={mut.isPending}
+            onClick={() => handleSubmit(v => mut.mutate(v))()}
+            className="flex-1 bg-blue-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+          >
+            {mut.isPending ? 'Wird angelegt…' : 'Anlegen'}
+          </button>
+        </div>
+      </form>
+    </Modal>
   )
 }
