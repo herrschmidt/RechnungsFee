@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="ISO-8859-15" standalone="no"?>
+<Anmeldungssteuern xmlns="http://finkonsens.de/elster/elsteranmeldung/ustva/v2026" version="2026">
+  <Erstellungsdatum>20261019</Erstellungsdatum>
+  <DatenLieferant>
+    <Name>Test &amp; Söhne Gärtnerei GmbH</Name>
+    <Strasse>Musterweg 12a</Strasse>
+    <PLZ>40213</PLZ>
+    <Ort>Düsseldorf</Ort>
+    <Telefon>0211 1234567</Telefon>
+    <Email>test@example.org</Email>
+  </DatenLieferant>
+  <Steuerfall>
+    <Umsatzsteuervoranmeldung>
+      <Jahr>2026</Jahr>
+      <Zeitraum>43</Zeitraum>
+      <Steuernummer>5133081508159</Steuernummer>
+      <Kz09>00000</Kz09>
+      <Kz66>19.00</Kz66>
+      <Kz67>95.00</Kz67>
+      <Kz81>1235</Kz81>
+      <Kz83>236.65</Kz83>
+      <Kz84>500</Kz84>
+      <Kz85>95.00</Kz85>
+      <Kz86>300</Kz86>
+    </Umsatzsteuervoranmeldung>
+  </Steuerfall>
+</Anmeldungssteuern>
