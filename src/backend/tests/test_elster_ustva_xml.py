@@ -10,7 +10,7 @@ Format-Vertrag verifiziert gegen:
 """
 import asyncio
 import re
-from datetime import date
+
 from decimal import Decimal
 from xml.etree import ElementTree as ET
 

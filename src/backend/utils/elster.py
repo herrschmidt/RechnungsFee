@@ -46,10 +46,6 @@ class ElsterExportFehler(ValueError):
     """Export kann nicht erzeugt werden (für 422-Antworten)."""
 
 
-class SteuernummerFehler(ElsterExportFehler):
-    """Ungültige oder nicht umrechenbare Steuernummer."""
-
-
 def steuernummer_elster13(steuernummer: str | None, bundesland: str | None) -> str:
     r"""Rechnet die Landes-Steuernummer in das 13-stellige ELSTER-Format um.
 
@@ -58,26 +54,26 @@ def steuernummer_elster13(steuernummer: str | None, bundesland: str | None) -> s
     (durchgereicht, wenn sie dem Schema \d{4}0\d{8} entsprechen).
     """
     if not bundesland or not bundesland.strip():
-        raise SteuernummerFehler(
+        raise ElsterExportFehler(
             "Bundesland fehlt – bitte in den Stammdaten hinterlegen."
         )
     land = bundesland.strip().upper()
     if land not in _LAND_TABELLE:
-        raise SteuernummerFehler(f"Unbekanntes Bundesland: {bundesland!r}")
+        raise ElsterExportFehler(f"Unbekanntes Bundesland: {bundesland!r}")
 
     if not steuernummer or not steuernummer.strip():
-        raise SteuernummerFehler(
+        raise ElsterExportFehler(
             "Steuernummer fehlt – bitte in den Stammdaten hinterlegen."
         )
     roh = steuernummer.strip()
     if re.match(r"^[A-Za-z]{2}", roh):
-        raise SteuernummerFehler(
+        raise ElsterExportFehler(
             "Das sieht nach einer USt-IdNr aus – ELSTER braucht die lokale "
             "Steuernummer vom Finanzamt, nicht die USt-IdNr."
         )
     ziffern = _TRENNER.sub("", roh)
     if not ziffern.isdigit():
-        raise SteuernummerFehler(
+        raise ElsterExportFehler(
             f"Steuernummer {roh!r} enthält ungültige Zeichen – erlaubt sind "
             "Ziffern sowie '/', '-', '.' und Leerzeichen."
         )
@@ -86,7 +82,7 @@ def steuernummer_elster13(steuernummer: str | None, bundesland: str | None) -> s
     if len(ziffern) == 13:
         if _STNR_13.fullmatch(ziffern):
             return ziffern
-        raise SteuernummerFehler(
+        raise ElsterExportFehler(
             "13-stellige Steuernummer ohne '0' an 5. Stelle – das ist kein "
             "gültiges ELSTER-Bundesschema."
         )
@@ -96,7 +92,7 @@ def steuernummer_elster13(steuernummer: str | None, bundesland: str | None) -> s
     if prepend and len(ziffern) == erwartet + 1:
         ziffern = ziffern[1:]
     if len(ziffern) != erwartet:
-        raise SteuernummerFehler(
+        raise ElsterExportFehler(
             f"Steuernummer {roh!r} hat für {land} die falsche Länge – "
             f"erwartet werden {erwartet} Ziffern im Landesformat."
         )
@@ -104,7 +100,7 @@ def steuernummer_elster13(steuernummer: str | None, bundesland: str | None) -> s
     kombiniert = praefix + ziffern
     ergebnis = kombiniert[:4] + "0" + kombiniert[4:]
     if not _STNR_13.fullmatch(ergebnis):
-        raise SteuernummerFehler(
+        raise ElsterExportFehler(
             f"Umrechnung von {roh!r} ({land}) ergab kein gültiges "
             "ELSTER-Bundesschema."
         )
@@ -148,7 +144,7 @@ def _format_kz(nr: str, wert: Decimal) -> str:
     if nr in _KZ_GANZZAHL:
         return str(int(wert))
     if nr in _KZ_CENT:
-        return f"{wert:.2f}" if wert >= 0 else f"-{abs(wert):.2f}"
+        return f"{wert:.2f}"
     raise ElsterExportFehler(f"Unbekannte ELSTER-Kennziffer: Kz{nr}")
 
 
@@ -191,7 +187,7 @@ def build_ustva_xml(
     kz_werte = dict(kz_werte)
     kz_werte.setdefault("83", Decimal("0.00"))
     kz_teile = [f"      <Kz09>{_KZ09_PLATZHALTER}</Kz09>"]
-    for nr in sorted(set(kz_werte)):
+    for nr in sorted(kz_werte):
         wert = kz_werte[nr]
         if nr != "83" and wert == 0:
             continue  # 0-Kennziffern werden nicht übertragen
@@ -216,8 +212,13 @@ def build_ustva_xml(
         "  <Steuerfall>",
         "    <Unternehmer>",
         f"      <Bezeichnung>{_e(name, 45)}</Bezeichnung>",
-        f"      <Name>{_e(getattr(unternehmen, 'nachname', ''), 45)}</Name>",
-        f"      <Vorname>{_e(getattr(unternehmen, 'vorname', ''), 45)}</Vorname>",
+    ]
+    # Optionale Personenfelder nur emittieren wenn belegt (XSD minLength=1)
+    for tag, feld in (("Name", "nachname"), ("Vorname", "vorname")):
+        wert = getattr(unternehmen, feld, None)
+        if wert:
+            zeilen.append(f"      <{tag}>{_e(wert, 45)}</{tag}>")
+    zeilen += [
         f"      <Str>{_e(getattr(unternehmen, 'strasse', ''), 30)}</Str>",
         f"      <Hausnummer>{_e(getattr(unternehmen, 'hausnummer', ''), 12)}</Hausnummer>",
         f"      <Ort>{_e(getattr(unternehmen, 'ort', ''), 30)}</Ort>",

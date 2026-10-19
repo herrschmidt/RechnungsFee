@@ -6,7 +6,7 @@ Testvektoren aus der kanonischen Bundesland-Tabelle (de.wikipedia.org/wiki/Steue
 """
 import pytest
 
-from utils.elster import SteuernummerFehler, steuernummer_elster13
+from utils.elster import ElsterExportFehler, steuernummer_elster13
 
 
 # (bundesland, landesformat, erwartete 13-stellige ELSTER-Steuernummer)
@@ -61,31 +61,31 @@ def test_13stelliges_ergebnis_wird_akzeptiert_und_passt_durch():
 
 
 def test_ust_idnr_wird_abgelehnt():
-    with pytest.raises(SteuernummerFehler, match="USt-IdNr"):
+    with pytest.raises(ElsterExportFehler, match="USt-IdNr"):
         steuernummer_elster13("DE811907980", "BY")
 
 
 def test_buchstaben_werden_abgelehnt():
-    with pytest.raises(SteuernummerFehler):
+    with pytest.raises(ElsterExportFehler):
         steuernummer_elster13("93/815/0815A", "BW")
 
 
 def test_falsche_laenge_wird_abgelehnt():
-    with pytest.raises(SteuernummerFehler):
+    with pytest.raises(ElsterExportFehler):
         steuernummer_elster13("93815081", "BW")          # zu kurz
-    with pytest.raises(SteuernummerFehler):
+    with pytest.raises(ElsterExportFehler):
         steuernummer_elster13("12345678901234", "NW")    # 14 Ziffern
 
 
 def test_bundesland_erforderlich():
-    with pytest.raises(SteuernummerFehler, match="undesland"):
+    with pytest.raises(ElsterExportFehler, match="undesland"):
         steuernummer_elster13("93/815/08152", None)
-    with pytest.raises(SteuernummerFehler, match="undesland"):
+    with pytest.raises(ElsterExportFehler, match="undesland"):
         steuernummer_elster13("93/815/08152", "")
 
 
 def test_unbekanntes_bundesland():
-    with pytest.raises(SteuernummerFehler):
+    with pytest.raises(ElsterExportFehler):
         steuernummer_elster13("93/815/08152", "XX")
 
 

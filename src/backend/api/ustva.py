@@ -889,9 +889,10 @@ def ustva_xml(
         raise HTTPException(422, "Kleinunternehmer §19 reichen keine Umsatzsteuer-Voranmeldung ein.")
     try:
         stnr13 = steuernummer_elster13(unt.steuernummer, unt.bundesland)
-        von, bis, _ = _zeitraum_grenzen(zeitraum)
     except ElsterExportFehler as exc:
         raise HTTPException(422, str(exc))
+    try:
+        von, bis, _ = _zeitraum_grenzen(zeitraum)
     except Exception:
         raise HTTPException(422, f"Ungültiges Zeitraum-Format: {zeitraum!r}")
 
