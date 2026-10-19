@@ -45,6 +45,7 @@ from sqlalchemy.orm import Session
 
 from database.connection import get_db
 from database.models import Journaleintrag, Kategorie, Unternehmen, UstvaExport, Rechnung, VorsteuerAnspruch
+from utils.elster import ElsterExportFehler, build_ustva_xml, steuernummer_elster13
 from utils.vorsteuer_soll import CUTOVER_DATUM as CUTOVER_DATUM_VORSTEUER
 
 router = APIRouter(prefix="/api/ustva", tags=["UStVA"])
@@ -866,6 +867,58 @@ def ustva_pdf(
         BytesIO(pdf_bytes),
         media_type="application/pdf",
         headers={"Content-Disposition": f'inline; filename="UStVA_{zeitraum}.pdf"'},
+    )
+
+
+# Kennziffern, die im ELSTER-XML als Steuerbetrag (2 Dezimalen) statt als
+# Bemessungsgrundlage (volle Euro) übertragen werden: eigene Steuerzeilen
+# (98/47/85) plus alle Vorsteuer-Kennzahlen (centgenau, §123 AO greift nicht).
+_STEUER_CENT_KZS = {"98", "47", "85", "66", "61", "62", "67"}
+
+
+@router.get("/xml")
+def ustva_xml(
+    zeitraum: str = Query(...),
+    db: Session = Depends(get_db),
+):
+    """UStVA als ELSTER-XML (Nutzdaten) für den Upload in Mein ELSTER. Issue #360."""
+    unt = db.query(Unternehmen).first()
+    if not unt:
+        raise HTTPException(404, "Unternehmensdaten nicht gefunden.")
+    if unt.ist_kleinunternehmer:
+        raise HTTPException(422, "Kleinunternehmer §19 reichen keine Umsatzsteuer-Voranmeldung ein.")
+    try:
+        stnr13 = steuernummer_elster13(unt.steuernummer, unt.bundesland)
+        von, bis, _ = _zeitraum_grenzen(zeitraum)
+    except ElsterExportFehler as exc:
+        raise HTTPException(422, str(exc))
+    except Exception:
+        raise HTTPException(422, f"Ungültiges Zeitraum-Format: {zeitraum!r}")
+
+    kz, _ = _berechne_kz(von, bis, db)
+    gerundet, zahllast_elster, _ = _elster_rundung(kz)
+
+    kz_werte: dict[str, Decimal] = {}
+    for nr, wert in gerundet.items():
+        if wert:
+            kz_werte[nr] = wert
+    for nr in _STEUER_CENT_KZS:
+        if kz[f"kz_{nr}"]:
+            kz_werte[nr] = kz[f"kz_{nr}"]
+    kz_werte["83"] = zahllast_elster  # Pflichtfeld: verbleibende Steuer
+
+    try:
+        xml_bytes = build_ustva_xml(
+            zeitraum=zeitraum, steuernummer13=stnr13,
+            unternehmen=unt, kz_werte=kz_werte,
+        )
+    except ElsterExportFehler as exc:
+        raise HTTPException(422, str(exc))
+
+    return StreamingResponse(
+        BytesIO(xml_bytes),
+        media_type="application/xml",
+        headers={"Content-Disposition": f'attachment; filename="UStVA_{zeitraum}_ELSTER.xml"'},
     )
 
 
