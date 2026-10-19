@@ -104,9 +104,16 @@ bereits konvertierte 13-stellige Nummern werden durchgereicht).
 - Internes ZM-Kennzeichen `D` (§13b-Dienstleistung) wird zu ELSTER-`S`
   (sonstige Leistung) gemappt; ELSTER-`D` = Dreiecksgeschäft ist im
   Datenmodell nicht abbildbar
-- Struktur gegen öffentliches 2013er-ERiC-XSD und Referenz-Implementierungen
-  verifiziert; das aktuelle Jahres-Schema ist nicht öffentlich. Restprüfung =
-  Probe-Upload in Mein ELSTER.
+- Feldtypen, Längen und Pflichtfelder gegen die Jahresdokumentation UStVA
+  2026 (ERiC 43.4, öffentlich gespiegelt unter
+  aa.docs.rechtlogisch.de/filings/ust-va) geprüft. Restprüfung = Probe-Upload
+  in Mein ELSTER.
+- Kein `<Unternehmer>`-Block (optional; ELSTER erlaubt dort als Hausnummer
+  nur Ziffern) – Name und Anschrift stehen im Pflichtblock `<DatenLieferant>`;
+  fehlen sie in den Stammdaten, antwortet der Endpunkt mit 422.
+- Manuelle Ergänzungen auf der UStVA-Seite (z. B. KZ 41) sind nicht im XML
+  enthalten – solange welche eingetragen sind, wird der XML-Export
+  ausgeblendet.
 - Kennziffern-Rundung wie im Formular: Bemessungsgrundlagen volle Euro
   (§123 AO), Steuer- und Vorsteuerbeträge centgenau; `Kz83` = verbleibende
   Steuer (Pflichtfeld).
