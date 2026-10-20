@@ -136,7 +136,7 @@ export function ZMPage() {
             </div>
             {ergebnis.positionen.length > 0 && (
               <div className="flex items-center gap-2">
-                <ExportButtons formats={['csv']} onExport={handleCsv} />
+                <ExportButtons formats={['elster-csv']} onExport={handleCsv} />
                 {csvFehler && <span className="text-xs text-red-600 dark:text-red-400">{csvFehler}</span>}
               </div>
             )}

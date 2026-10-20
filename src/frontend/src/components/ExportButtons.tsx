@@ -1,8 +1,8 @@
 import { Fragment, useState } from 'react'
 
-type ExportFormat = 'pdf' | 'csv' | 'xml'
+type ExportFormat = 'pdf' | 'csv' | 'xml' | 'elster-csv'
 
-const LABEL: Record<ExportFormat, string> = { pdf: 'PDF', csv: 'CSV', xml: 'ELSTER-XML' }
+const LABEL: Record<ExportFormat, string> = { pdf: 'PDF', csv: 'CSV', xml: 'ELSTER-XML', 'elster-csv': 'ELSTER-CSV' }
 
 interface ExportButtonsProps<F extends ExportFormat = ExportFormat> {
   onExport: (format: F) => void | Promise<void>
