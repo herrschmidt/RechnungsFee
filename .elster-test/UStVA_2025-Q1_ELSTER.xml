@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="ISO-8859-15" standalone="no"?>
+<Anmeldungssteuern xmlns="http://finkonsens.de/elster/elsteranmeldung/ustva/v2025" version="2025">
+  <Erstellungsdatum>20261020</Erstellungsdatum>
+  <DatenLieferant>
+    <Name>Testagentur Muster GmbH</Name>
+    <Strasse>Musterstrasse 12</Strasse>
+    <PLZ>70173</PLZ>
+    <Ort>Stuttgart</Ort>
+  </DatenLieferant>
+  <Steuerfall>
+    <Umsatzsteuervoranmeldung>
+      <Jahr>2025</Jahr>
+      <Zeitraum>41</Zeitraum>
+      <Steuernummer>2893081508152</Steuernummer>
+      <Kz09>00000</Kz09>
+      <Kz66>11.40</Kz66>
+      <Kz81>2500</Kz81>
+      <Kz83>463.60</Kz83>
+    </Umsatzsteuervoranmeldung>
+  </Steuerfall>
+</Anmeldungssteuern>

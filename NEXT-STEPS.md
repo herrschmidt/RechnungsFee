@@ -1,12 +1,14 @@
 # Nächste Schritte: ELSTER-Export (Issue #360)
 
 > Lokal per `.git/info/exclude` ignoriert; liegt nur im Fork-Branch `elster-test-material`
-> (nicht im PR-Branch). Stand: 2026-10-19.
+> (nicht im PR-Branch). Stand: 2026-10-20.
 
 ## Stand
 
-- Branch `feature/elster-export`, 8 Commits auf `main` (4db78d00).
-  Upstream-`main` hat seitdem keine neuen Commits (Stand 2026-10-19).
+- Branch `feature/elster-export`, 10 Commits auf `main` (4db78d00)
+  – zuletzt `25073184` (ZM-Button „ELSTER-CSV“) und die Doku zum
+  Upload-Test. Upstream-`main` hat seitdem keine neuen Commits (Stand
+  2026-10-20).
 - **Fork:** <https://github.com/herrschmidt/RechnungsFee> (lokal Remote `fork`,
   `origin` = Upstream). Gepusht: `feature/elster-export` (PR-Branch) und
   `elster-test-material` (= PR-Branch + diese Notiz + `.elster-test/`, **nie als PR**).
@@ -44,7 +46,27 @@ git switch elster-test-material   # enthält NEXT-STEPS.md + .elster-test/
 - **#458** noch entscheiden: entweder abwarten oder im PR als bekannte
   Einschränkung nennen (Fehler besteht schon vorher, betrifft auch Anzeigehilfe/PDF).
 
-## Upload-Test in Mein ELSTER (noch offen, macht der User selbst)
+## Upload-Test in Mein ELSTER (durchgeführt 2026-10-20)
+
+**Ergebnis: beide Dateien ohne Fehler importiert, Werte korrekt übernommen –
+nichts abgesendet.** Getestet mit ad-hoc-Testdaten (Q1/2025, BW-Firma
+`93/815/08152` → `2893081508152`, AT-Kunde `ATU12345675`), Dateien in
+`.elster-test/`: `UStVA_2025-Q1_ELSTER.xml`, `ZM_2025-Q1_ELSTER.csv`.
+
+- **UStVA-XML:** Formular befüllt ohne Fehlermeldung. Kz81 2500 → ELSTER
+  rechnete selbst 475 € (19 %), Kz66 11,40, Kz83 463,60, Zeitraum
+  I. Kalendervierteljahr 2025, Steuernummer in Landesformat angezeigt.
+  Prüfmodus: keine Fehler.
+- **ZM-CSV:** eine Meldezeile `ATU12345675, 1.500 €, Innergemeinschaftliche
+  Lieferung` übernommen, Prüfmodus ohne Fehler. Nur Art „L" upload-getestet;
+  „S" (§13b-Dienstleistung) deckt der Test nicht ab – hängt ohnehin an #456.
+- **Lernpunkt USt-IdNr.:** ELSTERs Plausi-Prüfung prüft Format + Prüfziffer
+  offline. `ATU12345678` → Hinweis „unschlüssig"; mit korrekter Prüfziffer
+  (`ATU12345675`, Luhn-basiert) ohne Hinweis akzeptiert. Für Testdaten also
+  prüfziffergültige IDs verwenden.
+
+Nachfolgend das ursprüngliche Testsetup mit den kanonischen Q3/2026-Dateien
+(für Wiederholungstests, z. B. nach Rebase oder #456-Fix).
 
 Nur hochladen, prüfen, **abbrechen – nie absenden**. Fiktive Testdaten.
 
