@@ -33,23 +33,30 @@ git switch elster-test-material   # enthält NEXT-STEPS.md + .elster-test/
 
 | Issue | Inhalt | Blocker? |
 |---|---|---|
-| [#456](https://github.com/nicolettas-muggelbude/RechnungsFee/issues/456) | ZM: EU-B2B-Dienstleistungen fehlen, stornierte §13b-Einkäufe erscheinen | **Ja für ZM-CSV** |
+| [#456](https://github.com/nicolettas-muggelbude/RechnungsFee/issues/456) | ZM: EU-B2B-Dienstleistungen fehlen, stornierte §13b-Einkäufe erscheinen | Nein mehr – als bekannte Einschränkung im PR |
 | [#457](https://github.com/nicolettas-muggelbude/RechnungsFee/issues/457) | KZ 87 als „Ausfuhr“ beschriftet (richtig: KZ 43) | Nein (Kz87 nie im XML) |
-| [#458](https://github.com/nicolettas-muggelbude/RechnungsFee/issues/458) | ig. Lieferungen aus Rechnungszahlungen fehlen in KZ 41 | Offen – XML enthält dann kein Kz41 |
+| [#458](https://github.com/nicolettas-muggelbude/RechnungsFee/issues/458) | ig. Lieferungen aus Rechnungszahlungen fehlen in KZ 41 | Nein – als bekannte Einschränkung im PR (im Upload-Test bestätigt) |
 
-## Entscheidungsregel für den PR
+## Entscheidung für den PR (2026-10-20, ersetzt die alte Regel)
 
-- **#456 vor den Upload-Tests gefixt** → gesamten PR einreichen (UStVA-XML + ZM-CSV).
-- **Sonst** → PR nur mit UStVA-XML. Die ZM-CSV steckt in `93390b50` (Backend +
-  Tests) sowie im ZM-Teil von `9df8ca40`, `cf23e5c2` (ZMPage, `downloadZmCsv`,
-  `build_zm_csv`) und in `docs/04-ustva.md` → herauslösen.
-- **#458** noch entscheiden: entweder abwarten oder im PR als bekannte
-  Einschränkung nennen (Fehler besteht schon vorher, betrifft auch Anzeigehilfe/PDF).
+- **Ein PR mit UStVA-XML + ZM-CSV.** #456 und #458 sind vorbestehende
+  Rechenfehler, die Seite/PDF genauso betreffen; die Exporte serialisieren nur.
+  Beide werden in `docs/04-ustva.md` und der PR-Beschreibung als bekannte
+  Einschränkungen genannt. (Alte Regel „ZM-CSV nur nach #456-Fix“ verworfen –
+  sonst müsste wegen #458 konsequenterweise auch die UStVA-XML warten.)
+- **Fix-PRs für #456/#458 erst nach Merge des Export-PRs** und nach Rückmeldung
+  der Maintainerin: Beide berühren `api/zm.py` bzw. die Berechnung (Konflikt-
+  und Rebase-Risiko bei gestapelten PRs), #456 hat eine offene Designfrage
+  (Migration von Altbuchungen vor #372), und die Maintainerin fixt solche
+  Issues oft selbst. Danach erneuter Upload-Test für ZM-Art „S“ und Kz41.
 
 ## Upload-Test in Mein ELSTER (durchgeführt 2026-10-20)
 
-**Ergebnis: beide Dateien ohne Fehler importiert, Werte korrekt übernommen –
-nichts abgesendet.** Getestet mit ad-hoc-Testdaten (Q1/2025, BW-Firma
+**Ergebnis: beide Dateien ohne Fehler importiert, die berechneten Werte
+unverändert übernommen – nichts abgesendet.** Verifiziert sind Format und
+Übernahme, nicht die Berechnung: Die Test-Rechnung RE-250007 (ig. Lieferung,
+1.500 €) steht in der ZM, fehlt aber als Kz41 in der UStVA (`kz_41 = 0.00`,
+genau #458). Getestet mit ad-hoc-Testdaten (Q1/2025, BW-Firma
 `93/815/08152` → `2893081508152`, AT-Kunde `ATU12345675`), Dateien in
 `.elster-test/`: `UStVA_2025-Q1_ELSTER.xml`, `ZM_2025-Q1_ELSTER.csv`.
 
