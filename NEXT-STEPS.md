@@ -5,19 +5,22 @@
 
 ## Stand
 
-- Branch `feature/elster-export`, 10 Commits auf `main` (4db78d00)
-  – zuletzt `25073184` (ZM-Button „ELSTER-CSV“) und die Doku zum
-  Upload-Test. Upstream-`main` hat seitdem keine neuen Commits (Stand
-  2026-10-20).
-- **Fork:** <https://github.com/herrschmidt/RechnungsFee> (lokal Remote `fork`,
-  `origin` = Upstream). Gepusht: `feature/elster-export` (PR-Branch) und
-  `elster-test-material` (= PR-Branch + diese Notiz + `.elster-test/`, **nie als PR**).
-- Adversarial Review erledigt, Fixes committet (`cf23e5c2`, `65d7ca01`).
-  Tests: 517 grün (volle Suite), `tsc -b` sauber.
-- Account `herrschmidt` hat im Upstream nur **READ** → PR aus dem Fork:
-  `gh pr create -R nicolettas-muggelbude/RechnungsFee --head herrschmidt:feature/elster-export`.
-- `HANDOFF.md` wurde in `7b0de578` angelegt und in `65d7ca01` wieder gelöscht –
-  beim PR auf Squash-Merge hinweisen oder vorher zusammenfassen.
+- **PR eingereicht: [#460](https://github.com/nicolettas-muggelbude/RechnungsFee/pull/460)**
+  (2026-10-20, offen) – UStVA-XML + ZM-CSV, 11 Commits, `Closes #360`,
+  Squash-Merge empfohlen. Kommentar an die Maintainerin in #360:
+  <https://github.com/nicolettas-muggelbude/RechnungsFee/issues/360#issuecomment-6262359173>
+  (inkl. Angebot Fix-PRs #456/#458 und Rückfrage zur Migration bei #456).
+- Branch `feature/elster-export` @ `abfc6064`, auf `main` (4db78d00);
+  Upstream-`main` unverändert (Stand 2026-10-20), kein Rebase nötig gewesen.
+- Gates vor dem PR: volle Suite 517 grün, `tsc -b` + ESLint sauber.
+- **Fork:** <https://github.com/herrschmidt/RechnungsFee>. Remotes je Rechner
+  verschieden: hier (Windows, `C:\Users\Martin\dev\RechnungsFee`) ist `origin`
+  = Fork, kein Upstream-Remote; auf dem ursprünglichen Rechner `fork` = Fork,
+  `origin` = Upstream. Gepusht: `feature/elster-export` (PR-Branch) und
+  `elster-test-material` (= PR-Branch-Stand + diese Notiz + `.elster-test/`,
+  **nie als PR**).
+- Account `herrschmidt` hat im Upstream nur **READ** → PRs aus dem Fork
+  (`gh pr create -R nicolettas-muggelbude/RechnungsFee --head herrschmidt:<branch>`).
 
 ### Auf einem anderen Rechner
 
@@ -107,12 +110,24 @@ python3 .elster-test/seed.py
 In der App **Q3 / 2026** wählen (voreingestellt ist das laufende Quartal).
 Bei Remote-Zugriff: Port 5173 weiterleiten oder die fertigen Dateien oben nutzen.
 
-## Vor dem PR
+### Windows (Git Bash) – Stolpersteine
 
-1. Auf aktuellen Upstream-`main` rebasen, volle Suite + `tsc -b` laufen lassen.
-2. PR-Beschreibung: kein ERiC/Zertifikat; Kz09-Platzhalter `00000` (laut
-   ELSTER-Hilfe beim Upload ignoriert); kein `<Unternehmer>`-Block; manuelle
-   Felder → XML ausgeblendet; geprüft gegen Jahresdokumentation UStVA 2026
-   (ERiC 43.4); Ergebnis des Upload-Tests; Verweise auf #456/#457/#458.
+- Datenverzeichnis ist `%APPDATA%\RechnungsFee` (nicht `HOME`) → isolieren mit
+  `APPDATA='C:\tmp\rf-elster-test'` statt `HOME=…` (Windows-Pfad angeben). Auf diesem Rechner liegt dort
+  seit 2026-10-20 nur die Test-DB dieses Laufs (Profil `Standard`) – vor einer
+  echten Installation der App löschen.
+- venv-Pfade: `.venv/Scripts/python` statt `.venv/bin/…`.
+- `seed_testdaten.py` braucht `PYTHONIOENCODING=utf-8` (Box-Zeichen) und
+  bricht bei den Bar-Journalbuchungen ab, wenn kein Kassenanfangsbestand
+  gesetzt ist (`POST /api/setup/kassenbestand`).
+- `git show <ref>:<pfad>` braucht `MSYS_NO_PATHCONV=1`.
+- `CLAUDE.md`/`claude.md` kollidieren (case-insensitives Dateisystem) →
+  `CLAUDE.md` erscheint dauerhaft als geändert; **nie mit committen**.
+
+## Nach dem Merge von #460
+
+1. Fix-PRs für #456 (nach Antwort der Maintainerin zur Migration) und #458,
+   jeweils eigener Branch von aktuellem `main`.
+2. Erneuter Upload-Test: ZM-Art „S“ und Kz41.
 3. Danach `NEXT-STEPS.md`, `.elster-test/` und den Fork-Branch
    `elster-test-material` löschen.
