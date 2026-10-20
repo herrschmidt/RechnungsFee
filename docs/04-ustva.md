@@ -106,8 +106,12 @@ bereits konvertierte 13-stellige Nummern werden durchgereicht).
   Datenmodell nicht abbildbar
 - Feldtypen, Längen und Pflichtfelder gegen die Jahresdokumentation UStVA
   2026 (ERiC 43.4, öffentlich gespiegelt unter
-  aa.docs.rechtlogisch.de/filings/ust-va) geprüft. Restprüfung = Probe-Upload
-  in Mein ELSTER.
+  aa.docs.rechtlogisch.de/filings/ust-va) geprüft.
+- Probe-Upload in Mein ELSTER (2026-10-20) für beide Dateien ohne Fehler
+  bestanden: UStVA-XML befüllte das Formular korrekt (Kennziffern, Zeitraum,
+  umgerechnete 13-stellige Steuernummer; ELSTER berechnete die Steuer aus den
+  vollen Euro-Bemessungsgrundlagen selbst), die ZM-CSV wurde als Meldezeile
+  (USt-IdNr., Summe, Art der Leistung) übernommen.
 - Kein `<Unternehmer>`-Block (optional; ELSTER erlaubt dort als Hausnummer
   nur Ziffern) – Name und Anschrift stehen im Pflichtblock `<DatenLieferant>`;
   fehlen sie in den Stammdaten, antwortet der Endpunkt mit 422.
