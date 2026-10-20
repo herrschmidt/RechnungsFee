@@ -108,10 +108,18 @@ bereits konvertierte 13-stellige Nummern werden durchgereicht).
   2026 (ERiC 43.4, öffentlich gespiegelt unter
   aa.docs.rechtlogisch.de/filings/ust-va) geprüft.
 - Probe-Upload in Mein ELSTER (2026-10-20) für beide Dateien ohne Fehler
-  bestanden: UStVA-XML befüllte das Formular korrekt (Kennziffern, Zeitraum,
-  umgerechnete 13-stellige Steuernummer; ELSTER berechnete die Steuer aus den
-  vollen Euro-Bemessungsgrundlagen selbst), die ZM-CSV wurde als Meldezeile
-  (USt-IdNr., Summe, Art der Leistung) übernommen.
+  bestanden: Die UStVA-XML befüllte das Formular mit den von RechnungsFee
+  berechneten Werten (Kennziffern, Zeitraum, umgerechnete 13-stellige
+  Steuernummer; ELSTER berechnete die Steuer aus den vollen
+  Euro-Bemessungsgrundlagen selbst), die ZM-CSV wurde als Meldezeile
+  (USt-IdNr., Summe, Art der Leistung „L“) übernommen. Der Test verifiziert
+  Format und Übernahme, nicht die Berechnung – die ZM-Art „S“ ist wegen #456
+  noch nicht upload-getestet.
+- Die Exporte übernehmen die berechneten Werte unverändert, also auch zwei
+  bekannte Rechenfehler, die Seite und PDF genauso betreffen:
+  #456 (ZM: EU-B2B-Dienstleistungen fehlen, stornierte §13b-Einkäufe
+  erscheinen als Position – letzteres bricht den CSV-Export mit 422 ab) und
+  #458 (ig. Lieferungen aus Rechnungszahlungen fehlen in KZ 41).
 - Kein `<Unternehmer>`-Block (optional; ELSTER erlaubt dort als Hausnummer
   nur Ziffern) – Name und Anschrift stehen im Pflichtblock `<DatenLieferant>`;
   fehlen sie in den Stammdaten, antwortet der Endpunkt mit 422.
